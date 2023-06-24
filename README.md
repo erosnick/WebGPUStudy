@@ -1,1 +1,1 @@
-WebGPU学习过程中的一些代码记录。基于https://github.com/buglas/webgpu-lesson.git提供的Vite + TypesSript模板。
+WebGPU学习过程中的一些代码记录。基于[https://github.com/buglas/webgpu-lesson.git]提供的Vite + TypesSript模板。
