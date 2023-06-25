@@ -1,5 +1,24 @@
 import shader from "./shaders/camera.wgsl?raw"
-import { mat4 } from "wgpu-matrix"
+import { mat4, vec3 } from "wgpu-matrix"
+
+var eye = vec3.create(0.0, 1.0, 1.0)
+
+const CameraSpeed = 0.1
+
+var viewBuffer : GPUBuffer
+
+var vertexCount = 0
+var indexCount = 0
+
+function updateViewMatrix(device : GPUDevice) {
+	let target = vec3.create(0.0, 0.0, 0.0)
+	let up = vec3.create(0.0, 1.0, 0.0)
+
+	let camera = mat4.lookAt(eye, target, up)
+
+	let viewMatrix = mat4.inverse(camera);
+	device.queue.writeBuffer(viewBuffer, 0, viewMatrix)
+}
 
 // 初始化WebGPU
 async function initWebGPU(canvas: HTMLCanvasElement) {
@@ -27,7 +46,7 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 		width: canvas.clientWidth * devicePixelRatio,
 		height: canvas.clientHeight * devicePixelRatio,
 	}
-  canvas.width = size.width
+  	canvas.width = size.width
 	canvas.height =size.height
 	//配置WebGPU
 	context.configure({
@@ -43,25 +62,113 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 // 创建渲染管线
 async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 	// 顶点点位
-	const vertex = new Float32Array([
-		// 0
-		0, 0.5, 0,
-		// 1
-		-0.5, -0.5, 0,
-		// 2
-		0.5, -0.5, 0.0,
+	const vertices = new Float32Array([
+		// 前
+		-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+		 0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+		 0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+		 0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+		-0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+		-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+
+		// 后
+		-0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+		 0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+		 0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+		 0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+		-0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+		-0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+
+		// 左
+		-0.5,  0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+		-0.5,  0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+		-0.5, -0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+		-0.5, -0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+		-0.5, -0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+		-0.5,  0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+
+		// 右
+		 0.5,  0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+		 0.5,  0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+		 0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+		 0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+		 0.5, -0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+		 0.5,  0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+
+		// 上
+		-0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+		 0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+		 0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+		 0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+		-0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+		-0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+
+		 // 下
+		-0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+		 0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+		 0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+		 0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+		-0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+		-0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
 	])
+
+	vertexCount = vertices.length / 12;
+
 	// 建立顶点缓冲区
 	const vertexBuffer = device.createBuffer({
 		// 顶点长度
-		size: vertex.byteLength,
+		size: vertices.byteLength,
 		// 用途，用于顶点着色，可写
 		usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 	})
+
+	const indices = new Int32Array([
+		// 前面 
+		0, 1, 2, 
+		2, 3, 0, 
+		// 后面 
+		4, 5, 6, 
+		6, 7, 4, 
+		// 左面 
+		4, 0, 3, 
+		3, 7, 4, 
+		// 右面 
+		1, 5, 6, 
+		6, 2, 1, 
+		// 上面 
+		3, 2, 6, 
+		6, 7, 3, 
+		// 下面 
+		4, 5, 1, 
+		1, 0, 4
+	])
+
+	indexCount = indices.length
+
+	const indexBuffer = device.createBuffer({
+		// 顶点长度
+		size: indices.byteLength,
+		// 用途，用于顶点着色，可写
+		usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+	})
+
 	// 写入数据
-	device.queue.writeBuffer(vertexBuffer, 0, vertex)
+	device.queue.writeBuffer(vertexBuffer, 0, vertices)
+	device.queue.writeBuffer(indexBuffer, 0, indices)
 
 	let modelMatrix = mat4.scaling([0.5, 0.5, 0.5])
+
+	const fov = 60.0 * Math.PI / 180.0
+
+	const canvas = document.querySelector("canvas")
+
+	if (!canvas) throw new Error("No Canvas")
+	
+	const aspect = canvas.width / canvas.height
+	const near = 0.1
+	const far = 1000.0
+
+	let projectionMatrix = mat4.perspective(fov, aspect, near, far)
 
 	//模型矩阵的缓冲区
 	const modelBuffer = device.createBuffer({
@@ -69,7 +176,53 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 	})
 
+	viewBuffer = device.createBuffer({
+		size: 4 * 4 * 4, //行数 * 列数 * BYTES_PER_ELEMENT
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+	})
+
+	const projectionBuffer = device.createBuffer({
+		size: 4 * 4 * 4, //行数 * 列数 * BYTES_PER_ELEMENT
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+	})
+
 	device.queue.writeBuffer(modelBuffer, 0, modelMatrix)
+
+	updateViewMatrix(device)
+
+	device.queue.writeBuffer(projectionBuffer, 0, projectionMatrix)
+
+	// 创建深度测试状态对象
+	const depthStencilState : GPUDepthStencilState = {
+		depthWriteEnabled: true,
+		depthCompare: "less",
+		format: "depth24plus-stencil8",
+		stencilFront: {
+			compare: "always",
+			failOp: "keep",
+			depthFailOp: "keep",
+			passOp: "keep"
+		},
+		stencilBack: {
+			compare: "always",
+			failOp: "keep",
+			depthFailOp: "keep",
+			passOp: "keep"
+		}
+	};
+
+	// 创建深度缓冲区和深度测试状态
+	const depthTexture = device.createTexture({
+		size: {
+			width: canvas.width,
+			height: canvas.height,
+			depthOrArrayLayers: 1
+		},
+		format: "depth24plus-stencil8",
+		usage: GPUTextureUsage.RENDER_ATTACHMENT
+	});
+
+	const depthView = depthTexture.createView();
 
 	const descriptor: GPURenderPipelineDescriptor = {
 		// 顶点着色器
@@ -84,7 +237,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 			buffers: [
 				{
 					// 顶点长度，以字节为单位
-					arrayStride: 3 * 4,
+					arrayStride: 12 * 4,
 					attributes: [
 						{
 							// 变量索引
@@ -92,7 +245,23 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 							// 偏移
 							offset: 0,
 							// 参数格式
-							format: "float32x3",
+							format: "float32x4",
+						},
+						{
+							// 变量索引
+							shaderLocation: 1,
+							// 偏移
+							offset: 4 * 4,
+							// 参数格式
+							format: "float32x4",
+						},
+						{
+							// 变量索引
+							shaderLocation: 2,
+							// 偏移
+							offset: 8 * 4,
+							// 参数格式
+							format: "float32x4",
 						},
 					],
 				},
@@ -119,6 +288,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 			//拓扑结构，triangle-list为绘制独立三角形
 			topology: "triangle-list",
 		},
+		depthStencil: depthStencilState, // 在此处设置深度测试状态0
 		// 渲染管线的布局
 		layout: "auto",
 	}
@@ -143,17 +313,33 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 			//  模型矩阵
 			{
 				// 位置
-				binding: 1,
+				binding: 0,
 				// 资源
 				resource: {
 					buffer: modelBuffer,
+				},
+			},
+			{
+				// 位置
+				binding: 1,
+				// 资源
+				resource: {
+					buffer: viewBuffer,
+				},
+			},
+			{
+				// 位置
+				binding: 2,
+				// 资源
+				resource: {
+					buffer: projectionBuffer,
 				},
 			},
 		],
 	})
 
 	//返回异步管线、顶点缓冲区
-	return { pipeline, vertexBuffer, uniformGroup }
+	return { pipeline, vertexBuffer, indexBuffer, uniformGroup, depthView }
 }
 // create & submit device commands
 // 编写绘图指令，并传递给本地的GPU设备
@@ -163,13 +349,16 @@ function draw(
 	pipelineObj: {
 		pipeline: GPURenderPipeline
 		vertexBuffer: GPUBuffer
+		indexBuffer: GPUBuffer
 		uniformGroup: GPUBindGroup
+		depthView : GPUTextureView
 	}
 ) {
 	// 创建指令编码器
 	const commandEncoder = device.createCommandEncoder()
 	// GPU纹理视图
 	const view = context.getCurrentTexture().createView()
+
 	// 渲染通道配置数据
 	const renderPassDescriptor: GPURenderPassDescriptor = {
 		// 颜色附件
@@ -179,11 +368,20 @@ function draw(
 				// 绘图前是否清空view，建议清空clear
 				loadOp: "clear", // clear/load
 				// 清理画布的颜色
-				clearValue: { r: 0, g: 0, b: 0, a: 1.0 },
+				clearValue: { r: 0.4, g: 0.6, b: 0.9, a: 1.0 },
 				//绘制完成后，是否保留颜色信息
 				storeOp: "store", // store/discard
 			},
 		],
+		depthStencilAttachment: {
+			view: pipelineObj.depthView,
+			depthClearValue : 1.0,
+			depthLoadOp : "clear",
+			depthStoreOp : "store",
+			stencilLoadOp : "load",
+			stencilStoreOp : "store",
+			stencilClearValue: 0,
+		}
 	}
 	// 建立渲染通道，类似图层
 	const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor)
@@ -191,16 +389,51 @@ function draw(
 	passEncoder.setPipeline(pipelineObj.pipeline)
 	// 写入顶点缓冲区
 	passEncoder.setVertexBuffer(0, pipelineObj.vertexBuffer)
+	// passEncoder.setIndexBuffer(pipelineObj.indexBuffer, "uint32")
 	// 把含有颜色缓冲区的BindGroup写入渲染通道
 	passEncoder.setBindGroup(0, pipelineObj.uniformGroup)
 	// 绘图，3 个顶点
-	passEncoder.draw(3)
+	// passEncoder.drawIndexed(indexCount, 1, 0, 0, 0)
+	passEncoder.draw(vertexCount)
 	// 结束编码
 	passEncoder.end()
 	// 结束指令编写,并返回GPU指令缓冲区
 	const gpuCommandBuffer = commandEncoder.finish()
 	// 向GPU提交绘图指令，所有指令将在提交后执行
 	device.queue.submit([gpuCommandBuffer])
+
+	requestAnimationFrame(() => {
+		updateViewMatrix(device)
+		draw(device, context, pipelineObj)
+	})
+}
+
+function processInput() {
+	document.addEventListener("keydown", (event) => {
+		switch (event.code) {
+			case 'ArrowLeft':	// 左
+				eye[0] -= CameraSpeed;
+				console.log("Left");
+			break;
+			case 'ArrowRight':	// 右
+				eye[0] += CameraSpeed;
+				console.log("Right");
+			break;
+			case 'ArrowUp':		// 上
+				eye[2] -= CameraSpeed;
+				console.log("Up");
+			break;
+			case 'ArrowDown':	// 下
+				eye[2] += CameraSpeed;
+				console.log("Down");
+			case 'KeyQ':
+				eye[1] += CameraSpeed;
+				break
+			case 'KeyE':
+				eye[1] -= CameraSpeed;
+				break;
+		}
+	})
 }
 
 async function run() {
@@ -209,14 +442,19 @@ async function run() {
 	// 初始化WebGPU
 	const { device, context, format } = await initWebGPU(canvas)
 	// 初始化渲染管道
-  const pipelineObj = await initPipeline(device, format)
+  	const pipelineObj = await initPipeline(device, format)
 	//绘图
-	draw(device, context, pipelineObj)
+	requestAnimationFrame(() => {
+		updateViewMatrix(device)
+		draw(device, context, pipelineObj)
+	})
+
+	processInput();
 
 	// 自适应窗口
 	window.addEventListener("resize", () => {
-    canvas.width=canvas.clientWidth * devicePixelRatio
-    canvas.height=canvas.clientHeight * devicePixelRatio
+    canvas.width = canvas.clientWidth * devicePixelRatio
+    canvas.height = canvas.clientHeight * devicePixelRatio
 		context.configure({
 			device,
 			format,
