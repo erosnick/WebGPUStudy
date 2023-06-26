@@ -1,14 +1,21 @@
+import { TriangleMesh } from "./TriangleMesh"
+import { GeoemtryGenerator } from "./geometryGenerator"
 import shader from "./shaders/camera.wgsl?raw"
 import { mat4, vec3 } from "wgpu-matrix"
 
 var eye = vec3.create(0.0, 1.0, 1.0)
 
+var lightPosition = vec3.create(1.0, 2.0, 1.0)
+
 const CameraSpeed = 0.1
 
 var viewBuffer : GPUBuffer
 
-var vertexCount = 0
-var indexCount = 0
+var eyeBuffer : GPUBuffer
+
+var cube : TriangleMesh
+
+var geoemtryGenerator = new GeoemtryGenerator()
 
 function updateViewMatrix(device : GPUDevice) {
 	let target = vec3.create(0.0, 0.0, 0.0)
@@ -18,6 +25,8 @@ function updateViewMatrix(device : GPUDevice) {
 
 	let viewMatrix = mat4.inverse(camera);
 	device.queue.writeBuffer(viewBuffer, 0, viewMatrix)
+
+	device.queue.writeBuffer(eyeBuffer, 0, new Float32Array([eye[0], eye[1], eye[2], 1.0]))
 }
 
 // 初始化WebGPU
@@ -61,100 +70,7 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 
 // 创建渲染管线
 async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
-	// 顶点点位
-	const vertices = new Float32Array([
-		// 前
-		-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-		 0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-		 0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-		 0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-		-0.5,  0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-		-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-
-		// 后
-		-0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-		 0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-		 0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-		 0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-		-0.5,  0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-		-0.5, -0.5, -0.5, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-
-		// 左
-		-0.5,  0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-		-0.5,  0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-		-0.5, -0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-		-0.5, -0.5, -0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-		-0.5, -0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-		-0.5,  0.5,  0.5, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
-
-		// 右
-		 0.5,  0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-		 0.5,  0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-		 0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-		 0.5, -0.5, -0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-		 0.5, -0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-		 0.5,  0.5,  0.5, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-
-		// 上
-		-0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-		 0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-		 0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-		 0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-		-0.5, 0.5,  0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-		-0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-
-		 // 下
-		-0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-		 0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-		 0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-		 0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-		-0.5, -0.5,  0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-		-0.5, -0.5, -0.5, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-	])
-
-	vertexCount = vertices.length / 12;
-
-	// 建立顶点缓冲区
-	const vertexBuffer = device.createBuffer({
-		// 顶点长度
-		size: vertices.byteLength,
-		// 用途，用于顶点着色，可写
-		usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-	})
-
-	const indices = new Int32Array([
-		// 前面 
-		0, 1, 2, 
-		2, 3, 0, 
-		// 后面 
-		4, 5, 6, 
-		6, 7, 4, 
-		// 左面 
-		4, 0, 3, 
-		3, 7, 4, 
-		// 右面 
-		1, 5, 6, 
-		6, 2, 1, 
-		// 上面 
-		3, 2, 6, 
-		6, 7, 3, 
-		// 下面 
-		4, 5, 1, 
-		1, 0, 4
-	])
-
-	indexCount = indices.length
-
-	const indexBuffer = device.createBuffer({
-		// 顶点长度
-		size: indices.byteLength,
-		// 用途，用于顶点着色，可写
-		usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-	})
-
-	// 写入数据
-	device.queue.writeBuffer(vertexBuffer, 0, vertices)
-	device.queue.writeBuffer(indexBuffer, 0, indices)
+	cube = geoemtryGenerator.createBox(device, 1.0, 1.0, 1.0, 0, 1.0)
 
 	let modelMatrix = mat4.scaling([0.5, 0.5, 0.5])
 
@@ -188,9 +104,21 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 
 	device.queue.writeBuffer(modelBuffer, 0, modelMatrix)
 
+	eyeBuffer = device.createBuffer({
+		size: 4 * 4,
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+	})
+
 	updateViewMatrix(device)
 
 	device.queue.writeBuffer(projectionBuffer, 0, projectionMatrix)
+
+	const lightPositionBuffer = device.createBuffer({
+		size: 3 * 4,
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+	})
+
+	device.queue.writeBuffer(lightPositionBuffer, 0, new Float32Array([lightPosition[0], lightPosition[1], lightPosition[2]]))
 
 	// 创建深度测试状态对象
 	const depthStencilState : GPUDepthStencilState = {
@@ -224,6 +152,41 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 
 	const depthView = depthTexture.createView();
 
+	const bindGroupLayout = device.createBindGroupLayout({
+		entries:
+		[
+			{
+				binding: 0,
+				visibility: GPUShaderStage.VERTEX,
+				buffer: {}
+			},
+			{
+				binding: 1,
+				visibility: GPUShaderStage.VERTEX,
+				buffer: {}
+			},
+			{
+				binding: 2,
+				visibility: GPUShaderStage.VERTEX,
+				buffer: {}
+			},
+			{
+				binding: 3,
+				visibility: GPUShaderStage.FRAGMENT,
+				buffer: {}
+			},
+			{
+				binding: 4,
+				visibility: GPUShaderStage.FRAGMENT,
+				buffer: {}
+			}
+		]
+	});
+
+	const pipelineLayout = device.createPipelineLayout({
+		bindGroupLayouts: [bindGroupLayout]
+	});
+
 	const descriptor: GPURenderPipelineDescriptor = {
 		// 顶点着色器
 		vertex: {
@@ -237,7 +200,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 			buffers: [
 				{
 					// 顶点长度，以字节为单位
-					arrayStride: 12 * 4,
+					arrayStride: 14 * 4,
 					attributes: [
 						{
 							// 变量索引
@@ -262,6 +225,14 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 							offset: 8 * 4,
 							// 参数格式
 							format: "float32x4",
+						},
+						{
+							// 变量索引
+							shaderLocation: 3,
+							// 偏移
+							offset: 12 * 4,
+							// 参数格式
+							format: "float32x2",
 						},
 					],
 				},
@@ -290,7 +261,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		},
 		depthStencil: depthStencilState, // 在此处设置深度测试状态0
 		// 渲染管线的布局
-		layout: "auto",
+		layout: pipelineLayout,
 	}
 	// 创建异步管线
 	const pipeline = await device.createRenderPipelineAsync(descriptor)
@@ -298,18 +269,9 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 	// 对buffer进行组合
 	const uniformGroup = device.createBindGroup({
 		// 布局
-		layout: pipeline.getBindGroupLayout(0),
+		layout: bindGroupLayout,
 		// 添加buffer
 		entries: [
-			// 图形颜色
-			/* {
-				// 位置
-				binding: 0,
-				// 资源
-				resource: {
-					buffer: colorBuffer,
-				},
-			}, */
 			//  模型矩阵
 			{
 				// 位置
@@ -335,11 +297,27 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 					buffer: projectionBuffer,
 				},
 			},
+			{
+				// 位置
+				binding: 3,
+				// 资源
+				resource: {
+					buffer: eyeBuffer,
+				},
+			},
+			{
+				// 位置
+				binding: 4,
+				// 资源
+				resource: {
+					buffer: lightPositionBuffer,
+				},
+			}
 		],
 	})
 
 	//返回异步管线、顶点缓冲区
-	return { pipeline, vertexBuffer, indexBuffer, uniformGroup, depthView }
+	return { pipeline, cube, uniformGroup, depthView }
 }
 // create & submit device commands
 // 编写绘图指令，并传递给本地的GPU设备
@@ -348,8 +326,7 @@ function draw(
 	context: GPUCanvasContext,
 	pipelineObj: {
 		pipeline: GPURenderPipeline
-		vertexBuffer: GPUBuffer
-		indexBuffer: GPUBuffer
+		cube: TriangleMesh
 		uniformGroup: GPUBindGroup
 		depthView : GPUTextureView
 	}
@@ -388,13 +365,13 @@ function draw(
 	// 传入渲染管线
 	passEncoder.setPipeline(pipelineObj.pipeline)
 	// 写入顶点缓冲区
-	passEncoder.setVertexBuffer(0, pipelineObj.vertexBuffer)
-	// passEncoder.setIndexBuffer(pipelineObj.indexBuffer, "uint32")
+	passEncoder.setVertexBuffer(0, pipelineObj.cube.vertexBuffer)
+	passEncoder.setIndexBuffer(pipelineObj.cube.indexBuffer, "uint32")
 	// 把含有颜色缓冲区的BindGroup写入渲染通道
 	passEncoder.setBindGroup(0, pipelineObj.uniformGroup)
 	// 绘图，3 个顶点
-	// passEncoder.drawIndexed(indexCount, 1, 0, 0, 0)
-	passEncoder.draw(vertexCount)
+	passEncoder.drawIndexed(pipelineObj.cube.indexCount, 1, 0, 0, 0)
+	// passEncoder.draw(pipelineObj.cube.vertexCount)
 	// 结束编码
 	passEncoder.end()
 	// 结束指令编写,并返回GPU指令缓冲区
