@@ -91,13 +91,13 @@ export class GeoemtryGenerator {
         return new TriangleMesh(device, vertices, indices)
     }
 
-    midPoint()
+    midPoint() {
+        
+    }
 
     subdivide(mesh : TriangleMesh) {
         var inputCopy = deepCopy(mesh)
         mesh.vertices = new Float32Array([])
         mesh.indices = new Int32Array([])
-
-
     }
 }

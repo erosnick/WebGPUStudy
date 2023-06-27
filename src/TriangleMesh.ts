@@ -1,3 +1,5 @@
+import { mat4, vec3 } from "wgpu-matrix"
+
 export class TriangleMesh {
     vertexBuffer : GPUBuffer
     indexBuffer : GPUBuffer
