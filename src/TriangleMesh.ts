@@ -1,4 +1,18 @@
 import { mat4, vec3 } from "wgpu-matrix"
+import { Vec2 } from "wgpu-matrix/dist/1.x/vec2"
+import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
+
+export class Vertex {
+    position : Vec3
+    normal : Vec3
+    texcoord : Vec2
+
+    constructor(position : Vec3, normal : Vec3, texcoord : Vec3) {
+        this.position = position
+        this.normal = normal
+        this.texcoord = texcoord
+    }
+}
 
 export class TriangleMesh {
     vertexBuffer : GPUBuffer
