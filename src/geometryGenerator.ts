@@ -1,4 +1,5 @@
-import { TriangleMesh } from "./TriangleMesh"
+import { mat4, vec3 } from "wgpu-matrix"
+import { TriangleMesh, Vertex } from "./TriangleMesh"
 
 function deepCopy(obj: any): any {
     if (typeof obj !== 'object' || obj === null) {
@@ -91,8 +92,27 @@ export class GeoemtryGenerator {
         return new TriangleMesh(device, vertices, indices)
     }
 
-    midPoint() {
-        
+    midPoint(v0 : Vertex, v1 : Vertex) {
+        var p0 = v0.position
+        var p1 = v1.position
+
+        var n0 = v0.normal
+        var n1 = v1.normal
+
+        var t0 = v0.texcoord
+        var t1 = v1.texcoord
+
+        var position = vec3.add(p0, p1)
+        position = vec3.mulScalar(position, 0.5)
+
+        var normal = vec3.add(n0, n1)
+        normal = vec3.mulScalar(normal, 0.5)
+        normal = vec3.normalize(normal)
+
+        var texcoord = vec3.add(t0, t1)
+        texcoord = vec3.mulScalar(texcoord, 0.5)
+
+        return new Vertex(position, normal, texcoord)
     }
 
     subdivide(mesh : TriangleMesh) {
