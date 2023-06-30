@@ -1,6 +1,6 @@
 import { TriangleMesh } from "./TriangleMesh"
 import { GeoemtryGenerator } from "./geometryGenerator"
-import shader from "./shaders/camera.wgsl?raw"
+import shader from "./shaders/geometry.wgsl?raw"
 import { mat4, vec3 } from "wgpu-matrix"
 
 var eye = vec3.create(0.0, 1.0, 1.0)
@@ -13,9 +13,9 @@ var viewBuffer : GPUBuffer
 
 var eyeBuffer : GPUBuffer
 
-var cube : TriangleMesh
+var geometry : TriangleMesh
 
-var geoemtryGenerator = new GeoemtryGenerator()
+var geoemtryGenerator : GeoemtryGenerator
 
 function updateViewMatrix(device : GPUDevice) {
 	let target = vec3.create(0.0, 0.0, 0.0)
@@ -65,12 +65,16 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 		alphaMode: "opaque",
 	})
 
+	geoemtryGenerator = new GeoemtryGenerator(device)
+
 	return { device, context, format, size }
 }
 
 // 创建渲染管线
 async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
-	cube = geoemtryGenerator.createBox(device, 1.0, 1.0, 1.0, 0, 1.0)
+	// geometry = geoemtryGenerator.createBox(1.0, 1.0, 1.0, 0, 1.0)
+	// geometry = geoemtryGenerator.createQuad(1.0, 1.0, 1.0)
+	geometry = geoemtryGenerator.createSphere(1.0, 32, 32, 1.0)
 
 	let modelMatrix = mat4.scaling([0.5, 0.5, 0.5])
 
@@ -263,6 +267,13 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		// 渲染管线的布局
 		layout: pipelineLayout,
 	}
+
+	const wireframeDescriptor = descriptor
+
+	if (wireframeDescriptor.primitive) {
+		wireframeDescriptor.primitive.topology = "line-list"
+	}
+	
 	// 创建异步管线
 	const pipeline = await device.createRenderPipelineAsync(descriptor)
 
@@ -317,7 +328,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 	})
 
 	//返回异步管线、顶点缓冲区
-	return { pipeline, cube, uniformGroup, depthView }
+	return { pipeline, geometry, uniformGroup, depthView }
 }
 // create & submit device commands
 // 编写绘图指令，并传递给本地的GPU设备
@@ -326,7 +337,7 @@ function draw(
 	context: GPUCanvasContext,
 	pipelineObj: {
 		pipeline: GPURenderPipeline
-		cube: TriangleMesh
+		geometry: TriangleMesh
 		uniformGroup: GPUBindGroup
 		depthView : GPUTextureView
 	}
@@ -365,13 +376,13 @@ function draw(
 	// 传入渲染管线
 	passEncoder.setPipeline(pipelineObj.pipeline)
 	// 写入顶点缓冲区
-	passEncoder.setVertexBuffer(0, pipelineObj.cube.vertexBuffer)
-	passEncoder.setIndexBuffer(pipelineObj.cube.indexBuffer, "uint32")
+	passEncoder.setVertexBuffer(0, pipelineObj.geometry.vertexBuffer)
+	passEncoder.setIndexBuffer(pipelineObj.geometry.indexBuffer, "uint32")
 	// 把含有颜色缓冲区的BindGroup写入渲染通道
 	passEncoder.setBindGroup(0, pipelineObj.uniformGroup)
 	// 绘图，3 个顶点
-	passEncoder.drawIndexed(pipelineObj.cube.indexCount, 1, 0, 0, 0)
-	// passEncoder.draw(pipelineObj.cube.vertexCount)
+	passEncoder.drawIndexed(pipelineObj.geometry.indexCount, 1, 0, 0, 0)
+	// passEncoder.draw(pipelineObj.geometry.vertexCount)
 	// 结束编码
 	passEncoder.end()
 	// 结束指令编写,并返回GPU指令缓冲区

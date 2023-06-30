@@ -21,12 +21,12 @@ export class TriangleMesh {
     indexBuffer : GPUBuffer
 
     vertices : Vertex[]
-    indices : Int32Array
+    indices : number[]
 
     vertexCount : number
     indexCount : number
 
-    constructor(device: GPUDevice, vertices: Vertex[], indices : Int32Array) {
+    constructor(device: GPUDevice, vertices: Vertex[], indices: number[]) {
         var vertexBufferData = new Float32Array(vertices.length * 32)
 
         for (let i = 0; i < vertices.length; i++) {
@@ -53,17 +53,23 @@ export class TriangleMesh {
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         })
+        
+        var indexData = new Int32Array(indices.length)
+
+        for (let i = 0; i < indices.length; i++) {
+            indexData[i] = indices[i]
+        }
 
         this.indexBuffer = device.createBuffer({
             // 顶点长度
-            size: indices.byteLength,
+            size: indexData.byteLength,
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
         })
 
         // 写入数据
         device.queue.writeBuffer(this.vertexBuffer, 0, vertexBufferData)
-        device.queue.writeBuffer(this.indexBuffer, 0, indices)
+        device.queue.writeBuffer(this.indexBuffer, 0, indexData)
 
         this.vertices = vertices
         this.indices = indices
