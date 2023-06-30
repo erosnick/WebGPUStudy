@@ -1,6 +1,7 @@
 import { mat4, vec3 } from "wgpu-matrix"
 import { Vec2 } from "wgpu-matrix/dist/1.x/vec2"
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
+import { Material } from "./material"
 
 export class Vertex {
     position : Vec3
@@ -17,16 +18,20 @@ export class Vertex {
 }
 
 export class TriangleMesh {
-    vertexBuffer : GPUBuffer
-    indexBuffer : GPUBuffer
+    vertexBuffer: GPUBuffer
+    indexBuffer: GPUBuffer
 
-    vertices : Vertex[]
-    indices : number[]
+    vertices: Vertex[]
+    indices: number[]
 
-    vertexCount : number
-    indexCount : number
+    vertexCount: number
+    indexCount: number
 
-    constructor(device: GPUDevice, vertices: Vertex[], indices: number[]) {
+    vertexBufferLayout: GPUVertexBufferLayout
+
+    material: Material
+
+    constructor(device: GPUDevice, vertices: Vertex[], indices: number[], material: Material) {
         var vertexBufferData = new Float32Array(vertices.length * 32)
 
         for (let i = 0; i < vertices.length; i++) {
@@ -52,6 +57,7 @@ export class TriangleMesh {
             size: vertexBufferData.byteLength,
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true
         })
         
         var indexData = new Int32Array(indices.length)
@@ -65,16 +71,65 @@ export class TriangleMesh {
             size: indexData.byteLength,
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true
         })
 
         // 写入数据
-        device.queue.writeBuffer(this.vertexBuffer, 0, vertexBufferData)
-        device.queue.writeBuffer(this.indexBuffer, 0, indexData)
+        // device.queue.writeBuffer(this.vertexBuffer, 0, vertexBufferData)
+
+        new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexBufferData)
+        this.vertexBuffer.unmap()
+
+        // device.queue.writeBuffer(this.indexBuffer, 0, indexData)
+
+        new Int32Array(this.indexBuffer.getMappedRange()).set(indices)
+        this.indexBuffer.unmap()
 
         this.vertices = vertices
         this.indices = indices
 
         this.vertexCount = vertices.length / 13
         this.indexCount = indices.length
+
+        this.vertexBufferLayout = {
+            // 顶点长度，以字节为单位
+            arrayStride: 11 * 4,
+            attributes: [
+                {
+                    // 变量索引
+                    shaderLocation: 0,
+                    // 偏移
+                    offset: 0,
+                    // 参数格式
+                    format: "float32x3",
+                },
+                {
+                    // 变量索引
+                    shaderLocation: 1,
+                    // 偏移
+                    offset: 3 * 4,
+                    // 参数格式
+                    format: "float32x3",
+                },
+                {
+                    // 变量索引
+                    shaderLocation: 2,
+                    // 偏移
+                    offset: 6 * 4,
+                    // 参数格式
+                    format: "float32x3",
+                },
+                {
+                    // 变量索引
+                    shaderLocation: 3,
+                    // 偏移
+                    offset: 9 * 4,
+                    // 参数格式
+                    format: "float32x2",
+                },
+            ],
+        }
+
+        this.material = material
     }
 }

@@ -19,11 +19,11 @@ function deepCopy(obj: any): any {
 export class GeoemtryGenerator {
     device : GPUDevice
 
-    constructor(device : GPUDevice) {
+    constructor(device: GPUDevice) {
         this.device = device
     }
 
-    createQuad(width : number, height : number, uvScale : number) {
+    createQuad(width: number, height: number, uvScale: number) {
         const halfWidth = 0.5 * width
         const halfHeight = 0.5 * height
 
@@ -39,7 +39,7 @@ export class GeoemtryGenerator {
         return new TriangleMesh(this.device, vertices, indices)
     }
 
-    createBox(width : number, height : number, depth : number, numSubdivisions : number,uvScale : number) {
+    createBox(width: number, height: number, depth: number, numSubdivisions: number, uvScale: number) {
         const halfWidth = 0.5 * width
         const halfHeight = 0.5 * height
         const halfDepth = 0.5 * depth
@@ -111,7 +111,7 @@ export class GeoemtryGenerator {
         return new TriangleMesh(this.device, vertices, indices)
     }
 
-    createSphere(radius : number, sliceCount : number, stackCount : number, uvScale : number) {
+    createSphere(radius: number, sliceCount: number, stackCount: number, uvScale: number) {
         //
         // Compute the vertices stating at the top pole and moving down the stacks.
         //
@@ -202,7 +202,7 @@ export class GeoemtryGenerator {
         return new TriangleMesh(this.device, vertices, indices)
     }
 
-    midPoint(v0 : Vertex, v1 : Vertex) {
+    midPoint(v0: Vertex, v1: Vertex) {
         var p0 = v0.position
         var p1 = v1.position
 
@@ -231,7 +231,7 @@ export class GeoemtryGenerator {
         return new Vertex(position, normal, color, texcoord)
     }
 
-    subdivide(mesh : TriangleMesh) {
+    subdivide(mesh: TriangleMesh) {
         var inputCopy = deepCopy(mesh)
         mesh.vertices = []
         mesh.indices = []
