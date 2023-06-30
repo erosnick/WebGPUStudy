@@ -8,19 +8,19 @@ struct VertexOutput {
   @builtin(position) Position : vec4f,
   @location(0) worldPosition : vec3f,
   @location(1) normal : vec3f,
-  @location(2) color : vec4f,
+  @location(2) color : vec3f,
   @location(3) texcoord : vec2f
 };
 
 @vertex
-fn vs_main(@location(0) position : vec4f, 
-           @location(1) normal : vec4f, 
-           @location(2) color : vec4f,
+fn vs_main(@location(0) position : vec3f, 
+           @location(1) normal : vec3f, 
+           @location(2) color : vec3f,
            @location(3) texcoord : vec2f) -> VertexOutput {
   var output : VertexOutput;
-  output.Position = projectionMatrix * viewMatrix * modelMatrix * position;
-  output.worldPosition = (modelMatrix * position).xyz;
-  output.normal = (modelMatrix * normal).xyz;
+  output.Position = projectionMatrix * viewMatrix * modelMatrix * vec4f(position, 1.0);
+  output.worldPosition = (modelMatrix * vec4f(position, 1.0)).xyz;
+  output.normal = (modelMatrix * vec4(normal, 0.0)).xyz;
   output.color = color;
   output.texcoord = texcoord;
   return output;
@@ -29,7 +29,7 @@ fn vs_main(@location(0) position : vec4f,
 @fragment
 fn fs_main(@location(0) worldPosition : vec3f, 
            @location(1) normal : vec3f, 
-           @location(2) color : vec4f,
+           @location(2) color : vec3f,
            @location(3) texcoord : vec2f) -> @location(0) vec4f {
   var n = normalize(normal);
   // var l = normalize(vec3f(0.8, 0.9, 1.0));

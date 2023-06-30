@@ -25,43 +25,43 @@ export class GeoemtryGenerator {
         const halfHeight = 0.5 * height
         const halfDepth = 0.5 * depth
 
-        const vertices = new Float32Array([
+        const vertices = [
             // 前
-            -halfWidth, -halfHeight, +halfDepth, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0,
-            +halfWidth, -halfHeight, +halfDepth, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0,
-            +halfWidth, +halfHeight, +halfDepth, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0,
-            -halfWidth, +halfHeight, +halfDepth, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0,
+            new Vertex([-halfWidth, -halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0]),
+            new Vertex([+halfWidth, -halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 0.0]),
+            new Vertex([+halfWidth, +halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0]),
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0]),
 
             // 后
-            +halfWidth, -halfHeight, -halfDepth, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-            -halfWidth, -halfHeight, -halfDepth, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-            -halfWidth, +halfHeight, -halfDepth, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-            +halfWidth, +halfHeight, -halfDepth, 1.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+            new Vertex([+halfWidth, -halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.0, 0.0]),
+            new Vertex([-halfWidth, -halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, +halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 1.0]),
 
             // 左
-            -halfWidth, -halfHeight, -halfDepth, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0,
-            -halfWidth, -halfHeight, +halfDepth, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-            -halfWidth, +halfHeight, +halfDepth, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-            -halfWidth, +halfHeight, -halfDepth, 1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+            new Vertex([-halfWidth, -halfHeight, -halfDepth], [-1.0, 0.0, 0.0],  [0.0, 0.0, 1.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, -halfHeight, +halfDepth], [-1.0, 0.0, 0.0],  [0.0, 0.0, 1.0], [1.0, 1.0]),
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [-1.0, 0.0, 0.0],  [0.0, 0.0, 1.0], [0.0, 1.0]),
+            new Vertex([-halfWidth, +halfHeight, -halfDepth], [-1.0, 0.0, 0.0],  [0.0, 0.0, 1.0], [0.0, 1.0]),
 
             // 右
-            +halfWidth, -halfHeight, +halfDepth, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0,
-            +halfWidth, -halfHeight, -halfDepth, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-            +halfWidth, +halfHeight, -halfDepth, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-            +halfWidth, +halfHeight, +halfDepth, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+            new Vertex([+halfWidth, -halfHeight, +halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 0.0]),
+            new Vertex([+halfWidth, -halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, +halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0]),
 
             // 上
-            -halfWidth, +halfHeight, +halfDepth, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0,
-            +halfWidth, +halfHeight, +halfDepth, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-            +halfWidth, +halfHeight, -halfDepth, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0,
-            -halfWidth, +halfHeight, -halfDepth, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0,
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0]),
 
             // 下
-            -halfWidth, -halfHeight, -halfDepth, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0,
-            +halfWidth, -halfHeight, -halfDepth, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0,
-            +halfWidth, -halfHeight, +halfDepth, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
-            -halfWidth, -halfHeight, +halfDepth, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
-        ])
+            new Vertex([-halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0]),
+            new Vertex([+halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0]),
+            new Vertex([+halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0]),
+        ]
 
         const indices = new Int32Array([
             // 前
@@ -99,6 +99,9 @@ export class GeoemtryGenerator {
         var n0 = v0.normal
         var n1 = v1.normal
 
+        var c0 = v0.color
+        var c1 = v1.color
+
         var t0 = v0.texcoord
         var t1 = v1.texcoord
 
@@ -109,15 +112,32 @@ export class GeoemtryGenerator {
         normal = vec3.mulScalar(normal, 0.5)
         normal = vec3.normalize(normal)
 
+        var color = vec3.add(c0, c1)
+        color = vec3.mulScalar(color, 0.5)
+
         var texcoord = vec3.add(t0, t1)
         texcoord = vec3.mulScalar(texcoord, 0.5)
 
-        return new Vertex(position, normal, texcoord)
+        return new Vertex(position, normal, color, texcoord)
     }
 
     subdivide(mesh : TriangleMesh) {
         var inputCopy = deepCopy(mesh)
-        mesh.vertices = new Float32Array([])
+        mesh.vertices = []
         mesh.indices = new Int32Array([])
+
+        var numTriangles = inputCopy.indexCount / 3
+
+        for (let i = 0; i < numTriangles; i++) {
+            var v0 = inputCopy.vertices[0]
+            var v1 = inputCopy.vertices[1]
+            var v2 = inputCopy.vertices[2]
+
+            var m0 = this.midPoint(v0, v1)
+            var m1 = this.midPoint(v1, v2)
+            var m2 = this.midPoint(v0, v2)
+
+            
+        }
     }
 }
