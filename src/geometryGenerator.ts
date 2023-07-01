@@ -1,6 +1,5 @@
 import { mat4, vec3 } from "wgpu-matrix"
 import { TriangleMesh, Vertex } from "./TriangleMesh"
-import { vertex } from "./util/cube";
 
 function deepCopy(obj: any): any {
     if (typeof obj !== 'object' || obj === null) {

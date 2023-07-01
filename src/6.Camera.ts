@@ -1,32 +1,49 @@
 import { TriangleMesh } from "./TriangleMesh"
-import { GeoemtryGenerator } from "./geometryGenerator"
-import shader from "./shaders/geometry.wgsl?raw"
+import { GeoemtryGenerator } from "./GeometryGenerator"
+import shader from "./shaders/camera.wgsl?raw"
 import { mat4, vec3 } from "wgpu-matrix"
+import { Camera, CameraMovement } from "./Camera"
+import { radians } from "./Math"
 
-var eye = vec3.create(0.0, 1.0, 1.0)
+var camera: Camera
 
 var lightPosition = vec3.create(1.0, 2.0, 1.0)
 
-const CameraSpeed = 0.1
+const FrameTime = 0.0166667
 
-var viewBuffer : GPUBuffer
+const NearPlane = 0.1
+const FarPlane = 1000.0
+
+var aspect: number
+
+var leftMouseButtonDown = false
+
+var mousePositionX = 0.0
+var mousePositionY = 0.0
+
+// 定义变量来存储按键状态
+var keysPressed = new Map()
+
+var viewBuffer: GPUBuffer
+var projectionBuffer: GPUBuffer
 
 var eyeBuffer : GPUBuffer
 
-var geometry : TriangleMesh
+var cube : TriangleMesh
 
-var geoemtryGenerator : GeoemtryGenerator
+var geoemtryGenerator: GeoemtryGenerator
 
 function updateViewMatrix(device : GPUDevice) {
-	let target = vec3.create(0.0, 0.0, 0.0)
-	let up = vec3.create(0.0, 1.0, 0.0)
+	let viewMatrix = camera.getViewMatrix()
 
-	let camera = mat4.lookAt(eye, target, up)
-
-	let viewMatrix = mat4.inverse(camera);
 	device.queue.writeBuffer(viewBuffer, 0, viewMatrix)
 
-	device.queue.writeBuffer(eyeBuffer, 0, new Float32Array([eye[0], eye[1], eye[2], 1.0]))
+	device.queue.writeBuffer(eyeBuffer, 0, new Float32Array([camera.position[0], camera.position[1], camera.position[2], 1.0]))
+}
+
+function updateProjectionMatrix(device: GPUDevice) {
+	let projectionMatrix = mat4.perspective(radians(camera.zoom), aspect, NearPlane, FarPlane)
+	device.queue.writeBuffer(projectionBuffer, 0, projectionMatrix)
 }
 
 // 初始化WebGPU
@@ -57,6 +74,7 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 	}
   	canvas.width = size.width
 	canvas.height =size.height
+
 	//配置WebGPU
 	context.configure({
 		device,
@@ -65,30 +83,23 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 		alphaMode: "opaque",
 	})
 
-	geoemtryGenerator = new GeoemtryGenerator(device)
-
 	return { device, context, format, size }
 }
 
 // 创建渲染管线
 async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
-	// geometry = geoemtryGenerator.createBox(1.0, 1.0, 1.0, 0, 1.0)
-	// geometry = geoemtryGenerator.createQuad(1.0, 1.0, 1.0)
-	geometry = geoemtryGenerator.createSphere(1.0, 32, 32, 1.0)
+	geoemtryGenerator = new GeoemtryGenerator(device)
+	cube = geoemtryGenerator.createBox(1.0, 1.0, 1.0, 0, 1.0)
 
 	let modelMatrix = mat4.scaling([0.5, 0.5, 0.5])
-
-	const fov = 60.0 * Math.PI / 180.0
 
 	const canvas = document.querySelector("canvas")
 
 	if (!canvas) throw new Error("No Canvas")
 	
-	const aspect = canvas.width / canvas.height
-	const near = 0.1
-	const far = 1000.0
+	aspect = canvas.width / canvas.height
 
-	let projectionMatrix = mat4.perspective(fov, aspect, near, far)
+	camera = new Camera([0.0, 0.0, 1.0])
 
 	//模型矩阵的缓冲区
 	const modelBuffer = device.createBuffer({
@@ -101,7 +112,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 	})
 
-	const projectionBuffer = device.createBuffer({
+	projectionBuffer = device.createBuffer({
 		size: 4 * 4 * 4, //行数 * 列数 * BYTES_PER_ELEMENT
 		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 	})
@@ -115,7 +126,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 
 	updateViewMatrix(device)
 
-	device.queue.writeBuffer(projectionBuffer, 0, projectionMatrix)
+	updateProjectionMatrix(device)
 
 	const lightPositionBuffer = device.createBuffer({
 		size: 3 * 4,
@@ -201,7 +212,46 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 			// 主函数
 			entryPoint: "vs_main",
 			//缓冲数据,1个渲染管道可最多传入8个缓冲数据
-			buffers: [geometry.vertexBufferLayout],
+			buffers: [
+				{
+					// 顶点长度，以字节为单位
+					arrayStride: 11 * 4,
+					attributes: [
+						{
+							// 变量索引
+							shaderLocation: 0,
+							// 偏移
+							offset: 0,
+							// 参数格式
+							format: "float32x3",
+						},
+						{
+							// 变量索引
+							shaderLocation: 1,
+							// 偏移
+							offset: 3 * 4,
+							// 参数格式
+							format: "float32x3",
+						},
+						{
+							// 变量索引
+							shaderLocation: 2,
+							// 偏移
+							offset: 6 * 4,
+							// 参数格式
+							format: "float32x3",
+						},
+						{
+							// 变量索引
+							shaderLocation: 3,
+							// 偏移
+							offset: 9 * 4,
+							// 参数格式
+							format: "float32x2",
+						},
+					],
+				},
+			],
 		},
 		// 片元着色器
 		fragment: {
@@ -228,13 +278,6 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		// 渲染管线的布局
 		layout: pipelineLayout,
 	}
-
-	const wireframeDescriptor = descriptor
-
-	if (wireframeDescriptor.primitive) {
-		wireframeDescriptor.primitive.topology = "line-list"
-	}
-	
 	// 创建异步管线
 	const pipeline = await device.createRenderPipelineAsync(descriptor)
 
@@ -289,7 +332,7 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 	})
 
 	//返回异步管线、顶点缓冲区
-	return { pipeline, geometry, uniformGroup, depthView }
+	return { pipeline, cube, uniformGroup, depthView }
 }
 // create & submit device commands
 // 编写绘图指令，并传递给本地的GPU设备
@@ -298,7 +341,7 @@ function draw(
 	context: GPUCanvasContext,
 	pipelineObj: {
 		pipeline: GPURenderPipeline
-		geometry: TriangleMesh
+		cube: TriangleMesh
 		uniformGroup: GPUBindGroup
 		depthView : GPUTextureView
 	}
@@ -337,13 +380,13 @@ function draw(
 	// 传入渲染管线
 	passEncoder.setPipeline(pipelineObj.pipeline)
 	// 写入顶点缓冲区
-	passEncoder.setVertexBuffer(0, pipelineObj.geometry.vertexBuffer)
-	passEncoder.setIndexBuffer(pipelineObj.geometry.indexBuffer, "uint32")
+	passEncoder.setVertexBuffer(0, pipelineObj.cube.vertexBuffer)
+	passEncoder.setIndexBuffer(pipelineObj.cube.indexBuffer, "uint32")
 	// 把含有颜色缓冲区的BindGroup写入渲染通道
 	passEncoder.setBindGroup(0, pipelineObj.uniformGroup)
 	// 绘图，3 个顶点
-	passEncoder.drawIndexed(pipelineObj.geometry.indexCount, 1, 0, 0, 0)
-	// passEncoder.draw(pipelineObj.geometry.vertexCount)
+	passEncoder.drawIndexed(pipelineObj.cube.indexCount, 1, 0, 0, 0)
+	// passEncoder.draw(pipelineObj.cube.vertexCount)
 	// 结束编码
 	passEncoder.end()
 	// 结束指令编写,并返回GPU指令缓冲区
@@ -352,37 +395,39 @@ function draw(
 	device.queue.submit([gpuCommandBuffer])
 
 	requestAnimationFrame(() => {
+		processInput()
 		updateViewMatrix(device)
+		updateProjectionMatrix(device)
 		draw(device, context, pipelineObj)
 	})
 }
 
 function processInput() {
-	document.addEventListener("keydown", (event) => {
-		switch (event.code) {
-			case 'ArrowLeft':	// 左
-				eye[0] -= CameraSpeed;
-				console.log("Left");
-			break;
-			case 'ArrowRight':	// 右
-				eye[0] += CameraSpeed;
-				console.log("Right");
-			break;
-			case 'ArrowUp':		// 上
-				eye[2] -= CameraSpeed;
-				console.log("Up");
-			break;
-			case 'ArrowDown':	// 下
-				eye[2] += CameraSpeed;
-				console.log("Down");
-			case 'KeyQ':
-				eye[1] += CameraSpeed;
-				break
-			case 'KeyE':
-				eye[1] -= CameraSpeed;
-				break;
-		}
-	})
+	// 根据按键状态更新物体的位置
+	if (keysPressed.get('w')) {
+		// 向前移动
+		camera.processKeyboard(CameraMovement.FORWARD, FrameTime)
+	}
+	if (keysPressed.get('a')) {
+		// 向左移动
+		camera.processKeyboard(CameraMovement.LEFT, FrameTime)
+	}
+	if (keysPressed.get('s')) {
+		// 向后移动
+		camera.processKeyboard(CameraMovement.BACKWARD, FrameTime)
+	}
+	if (keysPressed.get('d')) {
+		// 向右移动
+		camera.processKeyboard(CameraMovement.RIGHT, FrameTime)
+	}
+	if (keysPressed.get('q')) {
+		// 向右移动
+		camera.processKeyboard(CameraMovement.UP, FrameTime)
+	}
+	if (keysPressed.get('e')) {
+		// 向右移动
+		camera.processKeyboard(CameraMovement.DOWN, FrameTime)
+	}
 }
 
 async function run() {
@@ -398,7 +443,100 @@ async function run() {
 		draw(device, context, pipelineObj)
 	})
 
-	processInput();
+	window.addEventListener("keydown", function (event) {
+		keysPressed.set(event.key, true)
+
+		console.log(event.key)
+
+		// 灯光开关
+		if (event.code == 'KeyL') {
+		}
+
+		// 摄像机动画开关
+		if (event.code == 'KeyC') {
+		}
+
+		// 环境反射开关
+		if (event.code == 'KeyR') {
+		}
+
+		// 环境折射开关
+		if (event.code == 'KeyF') {
+		}
+
+		// 阴影调试开关
+		if (event.code == 'Digit1') {
+		}
+
+		// 小车动画开关
+		if (event.code == 'KeyM') {
+		}
+
+		// 层级摄像机动画开关
+		if (event.code == 'KeyD') {
+		}
+
+		// 天空盒开关
+		if (event.code == 'KeyE') {
+		}
+
+		// 阴影开关
+		if (event.code == 'KeyS') {
+		}
+	})
+
+	// 绑定keyup事件
+	window.addEventListener("keyup", function (event) {
+		keysPressed.set(event.key, false)
+	})
+
+	function handleMouseDown(event: MouseEvent) {
+		// 左键：0
+		// 中键：1
+		// 右键：2
+		if (event.button === 0) {
+			leftMouseButtonDown = true
+		}
+		mousePositionX = event.clientX
+		mousePositionY = event.clientY
+		// console.log("Mouse up at:", event.clientX, event.clientY);
+	}
+
+	window.addEventListener("mousedown", handleMouseDown);
+
+	function handleMouseUp(event: MouseEvent) {
+		// 左键：0
+		// 中键：1
+		// 右键：2
+		if (event.button === 0) {
+			leftMouseButtonDown = false
+		}
+		// console.log("Mouse up at:", event.clientX, event.clientY);
+	}
+
+	window.addEventListener("mouseup", handleMouseUp);
+
+	function handleMouseMove(event: MouseEvent) {
+		if (leftMouseButtonDown) {
+			var xoffset = event.clientX - mousePositionX
+			var yoffset = mousePositionY - event.clientY
+
+			camera.processMouseMovement(xoffset, yoffset, true)
+			// console.log("Mouse moved to:", event.clientX, event.clientY);
+		}
+
+		mousePositionX = event.clientX
+		mousePositionY = event.clientY
+	}
+
+	window.addEventListener("mousemove", handleMouseMove);
+
+	function handleMouseWheel(event: WheelEvent) {
+		camera.processMouseScroll(event.deltaY > 0.0 ? 1.0 : -1.0)
+		console.log("Mouse wheel scrolled:", event.deltaY);
+	}
+
+	window.addEventListener("wheel", handleMouseWheel);
 
 	// 自适应窗口
 	window.addEventListener("resize", () => {

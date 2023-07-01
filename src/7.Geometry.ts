@@ -1,7 +1,6 @@
 import { TriangleMesh } from "./TriangleMesh"
-import { GeoemtryGenerator } from "./geometryGenerator"
-import { Material } from "./material"
-import shader from "./shaders/texture.wgsl?raw"
+import { GeoemtryGenerator } from "./GeometryGenerator"
+import shader from "./shaders/geometry.wgsl?raw"
 import { mat4, vec3 } from "wgpu-matrix"
 
 var eye = vec3.create(0.0, 1.0, 1.0)
@@ -18,7 +17,7 @@ var geometry : TriangleMesh
 
 var geoemtryGenerator : GeoemtryGenerator
 
-function updateViewMatrix(device: GPUDevice) {
+function updateViewMatrix(device : GPUDevice) {
 	let target = vec3.create(0.0, 0.0, 0.0)
 	let up = vec3.create(0.0, 1.0, 0.0)
 
@@ -74,11 +73,8 @@ async function initWebGPU(canvas: HTMLCanvasElement) {
 // 创建渲染管线
 async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 	// geometry = geoemtryGenerator.createBox(1.0, 1.0, 1.0, 0, 1.0)
-	geometry = geoemtryGenerator.createQuad(1.0, 1.0, 1.0)
-	// geometry = geoemtryGenerator.createSphere(1.0, 32, 32, 1.0)
-
-	geometry.material = new Material()
-	await geometry.material.initialize(device, "textures/Kanna.jpg")
+	// geometry = geoemtryGenerator.createQuad(1.0, 1.0, 1.0)
+	geometry = geoemtryGenerator.createSphere(1.0, 32, 32, 1.0)
 
 	let modelMatrix = mat4.scaling([0.5, 0.5, 0.5])
 
@@ -187,16 +183,6 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 				binding: 4,
 				visibility: GPUShaderStage.FRAGMENT,
 				buffer: {}
-			},
-			{
-				binding: 5,
-				visibility: GPUShaderStage.FRAGMENT,
-				texture: {}
-			},
-			{
-				binding: 6,
-				visibility: GPUShaderStage.FRAGMENT,
-				sampler: {}
 			}
 		]
 	});
@@ -243,11 +229,11 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 		layout: pipelineLayout,
 	}
 
-	// const wireframeDescriptor = descriptor
+	const wireframeDescriptor = descriptor
 
-	// if (wireframeDescriptor.primitive) {
-	// 	wireframeDescriptor.primitive.topology = "line-list"
-	// }
+	if (wireframeDescriptor.primitive) {
+		wireframeDescriptor.primitive.topology = "line-list"
+	}
 	
 	// 创建异步管线
 	const pipeline = await device.createRenderPipelineAsync(descriptor)
@@ -298,18 +284,6 @@ async function initPipeline(device: GPUDevice, format: GPUTextureFormat) {
 				resource: {
 					buffer: lightPositionBuffer,
 				},
-			},
-			{
-				// 位置
-				binding: 5,
-				// 资源
-				resource: geometry.material.view
-			},
-			{
-				// 位置
-				binding: 6,
-				// 资源
-				resource: geometry.material.sampler
 			}
 		],
 	})
