@@ -1,7 +1,7 @@
 import { mat4, vec3 } from "wgpu-matrix"
 import { Vec2 } from "wgpu-matrix/dist/1.x/vec2"
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
-import { Material } from "./material"
+import { Material } from "./Material"
 
 export class Vertex {
     position : Vec3
@@ -18,57 +18,55 @@ export class Vertex {
 }
 
 export class TriangleMesh {
-    vertexBuffer: GPUBuffer
-    indexBuffer: GPUBuffer
+    vertexBuffer!: GPUBuffer
+    indexBuffer!: GPUBuffer
 
-    vertices: Vertex[]
-    indices: number[]
+    vertices!: Vertex[]
+    indices!: Uint32Array
 
-    vertexCount: number
-    indexCount: number
+    vertexCount!: number
+    indexCount!: number
 
-    vertexBufferLayout: GPUVertexBufferLayout
+    vertexBufferLayout!: GPUVertexBufferLayout
 
-    material: Material
+    material!: Material
 
-    constructor(device: GPUDevice, vertices: Vertex[], indices: number[], material: Material) {
+    constructor(device: GPUDevice, vertices: Vertex[], indices: Uint32Array, material: Material) {
         var vertexBufferData = new Float32Array(vertices.length * 32)
 
         for (let i = 0; i < vertices.length; i++) {
             var vertex = vertices[i]
-            vertexBufferData[i * 11] = vertex.position[0];
-            vertexBufferData[i * 11 + 1] = vertex.position[1];
-            vertexBufferData[i * 11 + 2] = vertex.position[2];
+            vertexBufferData[i * 11] = vertex.position[0]
+            vertexBufferData[i * 11 + 1] = vertex.position[1]
+            vertexBufferData[i * 11 + 2] = vertex.position[2]
 
-            vertexBufferData[i * 11 + 3] = vertex.normal[0];
-            vertexBufferData[i * 11 + 4] = vertex.normal[1];
-            vertexBufferData[i * 11 + 5] = vertex.normal[2];
+            vertexBufferData[i * 11 + 3] = vertex.normal[0]
+            vertexBufferData[i * 11 + 4] = vertex.normal[1]
+            vertexBufferData[i * 11 + 5] = vertex.normal[2]
 
-            vertexBufferData[i * 11 + 6] = vertex.color[0];
-            vertexBufferData[i * 11 + 7] = vertex.color[1];
-            vertexBufferData[i * 11 + 8] = vertex.color[2];
+            vertexBufferData[i * 11 + 6] = vertex.color[0]
+            vertexBufferData[i * 11 + 7] = vertex.color[1]
+            vertexBufferData[i * 11 + 8] = vertex.color[2]
 
-            vertexBufferData[i * 11 + 9] = vertex.texcoord[0];
-            vertexBufferData[i * 11 + 10] = vertex.texcoord[1];
+            vertexBufferData[i * 11 + 9] = vertex.texcoord[0]
+            vertexBufferData[i * 11 + 10] = vertex.texcoord[1]
         }
 
+        this.initialize(device, vertexBufferData, indices, material)
+    }
+
+    initialize(device: GPUDevice, vertices: Float32Array, indices: Uint32Array, material: Material) {
         this.vertexBuffer = device.createBuffer({
             // 顶点长度
-            size: vertexBufferData.byteLength,
+            size: vertices.byteLength,
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
             mappedAtCreation: true
         })
-        
-        var indexData = new Int32Array(indices.length)
-
-        for (let i = 0; i < indices.length; i++) {
-            indexData[i] = indices[i]
-        }
 
         this.indexBuffer = device.createBuffer({
             // 顶点长度
-            size: indexData.byteLength,
+            size: indices.byteLength,
             // 用途，用于顶点着色，可写
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
             mappedAtCreation: true
@@ -77,15 +75,14 @@ export class TriangleMesh {
         // 写入数据
         // device.queue.writeBuffer(this.vertexBuffer, 0, vertexBufferData)
 
-        new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexBufferData)
+        new Float32Array(this.vertexBuffer.getMappedRange()).set(vertices)
         this.vertexBuffer.unmap()
 
         // device.queue.writeBuffer(this.indexBuffer, 0, indexData)
 
-        new Int32Array(this.indexBuffer.getMappedRange()).set(indices)
+        new Uint32Array(this.indexBuffer.getMappedRange()).set(indices)
         this.indexBuffer.unmap()
 
-        this.vertices = vertices
         this.indices = indices
 
         this.vertexCount = vertices.length / 13

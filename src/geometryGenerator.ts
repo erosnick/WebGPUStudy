@@ -1,5 +1,6 @@
 import { mat4, vec3 } from "wgpu-matrix"
 import { TriangleMesh, Vertex } from "./TriangleMesh"
+import { Material } from "./Material";
 
 function deepCopy(obj: any): any {
     if (typeof obj !== 'object' || obj === null) {
@@ -13,6 +14,26 @@ function deepCopy(obj: any): any {
     });
 
     return copy;
+}
+
+export function toUint32Array(array: number[]) {
+    var bufferData = new Uint32Array(array.length * 4)
+
+    for (let i = 0; i < array.length; i++) {
+        bufferData[i] = array[i]
+    }
+
+    return bufferData
+}
+
+export function toFloat32Array(array: number[]) {
+    var bufferData = new Float32Array(array.length * 4)
+
+    for (let i = 0; i < array.length; i++) {
+        bufferData[i] = array[i]
+    }
+
+    return bufferData
 }
 
 export class GeoemtryGenerator {
@@ -35,7 +56,7 @@ export class GeoemtryGenerator {
 
         const indices = [0, 1, 2, 2, 3, 0]
 
-        return new TriangleMesh(this.device, vertices, indices)
+        return new TriangleMesh(this.device, vertices, indices, new Material())
     }
 
     createBox(width: number, height: number, depth: number, numSubdivisions: number, uvScale: number) {
@@ -107,7 +128,9 @@ export class GeoemtryGenerator {
             20, 22, 23
         ]
 
-        return new TriangleMesh(this.device, vertices, indices)
+        var indicesBufferData = toUint32Array(indices)
+
+        return new TriangleMesh(this.device, vertices, indicesBufferData, new Material())
     }
 
     createSphere(radius: number, sliceCount: number, stackCount: number, uvScale: number) {
@@ -197,8 +220,10 @@ export class GeoemtryGenerator {
             indices.push(baseIndex + i)
             indices.push(baseIndex + i + 1)
         }
+
+        var indicesBufferData = toUint32Array(indices)
         
-        return new TriangleMesh(this.device, vertices, indices)
+        return new TriangleMesh(this.device, vertices, indicesBufferData, new Material())
     }
 
     midPoint(v0: Vertex, v1: Vertex) {
@@ -233,7 +258,7 @@ export class GeoemtryGenerator {
     subdivide(mesh: TriangleMesh) {
         var inputCopy = deepCopy(mesh)
         mesh.vertices = []
-        mesh.indices = []
+        var indices = []
 
         var numTriangles = inputCopy.indexCount / 3
 
@@ -255,21 +280,23 @@ export class GeoemtryGenerator {
             mesh.vertices.push(m1);
             mesh.vertices.push(m2);
 
-            mesh.indices.push(i * 6 + 0)
-            mesh.indices.push(i * 6 + 3)
-            mesh.indices.push(i * 6 + 5)
+            indices.push(i * 6 + 0)
+            indices.push(i * 6 + 3)
+            indices.push(i * 6 + 5)
 
-            mesh.indices.push(i * 6 + 3)
-            mesh.indices.push(i * 6 + 4)
-            mesh.indices.push(i * 6 + 5)
+            indices.push(i * 6 + 3)
+            indices.push(i * 6 + 4)
+            indices.push(i * 6 + 5)
 
-            mesh.indices.push(i * 6 + 5)
-            mesh.indices.push(i * 6 + 4)
-            mesh.indices.push(i * 6 + 2)
+            indices.push(i * 6 + 5)
+            indices.push(i * 6 + 4)
+            indices.push(i * 6 + 2)
 
-            mesh.indices.push(i * 6 + 3)
-            mesh.indices.push(i * 6 + 1)
-            mesh.indices.push(i * 6 + 4)
+            indices.push(i * 6 + 3)
+            indices.push(i * 6 + 1)
+            indices.push(i * 6 + 4)
         }
+
+        mesh.indices = toUint32Array(indices)
     }
 }
