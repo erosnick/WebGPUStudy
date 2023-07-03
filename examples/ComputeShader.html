@@ -28,8 +28,9 @@
     </style>
 </head>
 <body>
-    <canvas id="gfx-main" width="800" height = "600"></canvas>
+    <canvas id="gfx-main" width="800" height = "450"></canvas>
     <h2>Sphere Count: <span id="sphereCount">0</span></h2>
+    <input type="range" id="inputSphereCount" min="1" max="10000" step="2" value="1">
     <h2>Render Time: <span id="renderTime"></span>0<span> ms</span></h2>
     <script type="module" src="/src/11.ComputeShader.ts"></script>
 </body>

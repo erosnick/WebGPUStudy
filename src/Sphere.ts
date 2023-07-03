@@ -4,4 +4,5 @@ export class Sphere {
     center!: Vec3
     color!: Vec3
     radius!: number
+    surfaceType!: number
 }

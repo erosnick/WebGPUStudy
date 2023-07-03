@@ -7,6 +7,10 @@ import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
 
 const Infinity = 10000.0
 
+var sphereCountElement: HTMLElement | null
+var renderTimeElement: HTMLElement | null
+var inputSphereCountElement: HTMLInputElement | null
+
 class Renderer {
 
 	canvas!: HTMLCanvasElement
@@ -14,8 +18,8 @@ class Renderer {
 	colorBuffer!: GPUTexture
 	colorBufferView!: GPUTextureView
 	sampler!: GPUSampler
-	sceneData!: GPUBuffer
-	sphereCount = 8192
+	sceneData!: GPUBuffer	
+
 	spheres!: Sphere[]
 	nodes!: BVHNode[]
 	sphereIndices!: number[]
@@ -24,6 +28,7 @@ class Renderer {
 	bvhBuffer!: GPUBuffer
 	sphereLookupBuffer!: GPUBuffer
 
+	useBVH = true
 
 	device!: GPUDevice
 
@@ -33,15 +38,14 @@ class Renderer {
 	screenBindGroup!: GPUBindGroup
 
 	imageWidth = 800
-	imageHeight = 600
+	imageHeight = 450
 
 	cameraPosition = new Float32Array([0.0, 0.0, 0.0])
 	cameraForward = new Float32Array([0.0, 0.0, -1.0])
 	cameraRight = new Float32Array([1.0, 0.0, 0.0])
 	cameraUp = new Float32Array([0.0, 1.0, 0.0])
-
-	sphereCountElement!: HTMLElement
-	renderTimeElement!: HTMLElement
+	sphereCount = 2
+	maxBounces = 50
 
 	constructor() {
 	}
@@ -62,27 +66,51 @@ class Renderer {
 			addressModeU: "repeat",
 			addressModeV: "repeat",
 			addressModeW: "repeat",
-			magFilter: "linear",
-			minFilter: "linear",
-			mipmapFilter: "linear",
+			magFilter: "nearest",
+			minFilter: "nearest",
+			mipmapFilter: "nearest",
 			maxAnisotropy: 1
 		}
 
 		this.sampler = this.device.createSampler(samplerDescriptor)
 
 		this.sceneData = this.device.createBuffer({
-			size: 80,
+			size: 96,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
+
+		// this.device.queue.writeBuffer(this.sceneData, 0, 
+		// 	new Float32Array([
+		// 	this.cameraPosition[0],
+		// 	this.cameraPosition[1],
+		// 	this.cameraPosition[2],
+		// 	0.0,
+		// 	this.cameraForward[0],
+		// 	this.cameraForward[1],
+		// 	this.cameraForward[2],
+		// 	0.0,
+		// 	this.cameraRight[0],
+		// 	this.cameraRight[1],
+		// 	this.cameraRight[2],
+		// 	0.0,
+		// 	this.cameraUp[0],
+		// 	this.cameraUp[1],
+		// 	this.cameraUp[2],
+		// 	0.0,
+		// 	this.sphereCount,
+		// 	1.0
+		// ]), 0, 18)
 
 		this.device.queue.writeBuffer(this.sceneData, 0, this.cameraPosition)
 		this.device.queue.writeBuffer(this.sceneData, 16, this.cameraForward)
 		this.device.queue.writeBuffer(this.sceneData, 32, this.cameraRight)
 		this.device.queue.writeBuffer(this.sceneData, 48, this.cameraUp)
-		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount]))
+		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, this.maxBounces]))
+
+		const SphereSize = 48
 
 		this.sphereData = this.device.createBuffer({
-			size: 32 * this.sphereCount,
+			size: SphereSize * this.sphereCount,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
 		})
 
@@ -105,22 +133,54 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		for (let i = 0; i < this.sphereCount; i++) {
-			let x = -50 + 100.0 * Math.random()
-			let y = -50.0 + 100.0 * Math.random()
-			let z = -50.0 + 100.0 * Math.random()
-			let r = Math.random()
-			let g = Math.random()
-			let b = Math.random()
-			let radius = 0.1 + 1.9 * Math.random();
+		// for (let i = 0; i < this.sphereCount; i++) {
+		// 	let x = -50 + 100.0 * Math.random()
+		// 	let y = -50.0 + 100.0 * Math.random()
+		// 	let z = -50.0 + 100.0 * Math.random()
+		// 	let r = Math.random()
+		// 	let g = Math.random()
+		// 	let b = Math.random()
+		// 	let radius = 0.1 + 1.9 * Math.random();
 
-			this.spheres[i] = new Sphere()
-			this.spheres[i].center = [x, y, z]
-			this.spheres[i].color = [r, g, b]
-			this.spheres[i].radius = radius
+		// 	this.spheres[i] = new Sphere()
+		// 	this.spheres[i].center = [x, y, z]
+		// 	this.spheres[i].color = [r, g, b]
+		// 	this.spheres[i].radius = radius
 
-			this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
-		}
+		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
+		// }
+
+		let x = 0.0
+		let y = 0.0
+		let z = -1.0
+		let r = 1.0
+		let g = 0.0
+		let b = 0.0
+		let a = 0.0
+		let radius = 0.5
+		let surfaceType = 0
+		this.spheres[0] = new Sphere()
+		this.spheres[0].center = [x, y, z]
+		this.spheres[0].color = [r, g, b]
+		this.spheres[0].radius = radius
+		this.spheres[0].surfaceType = surfaceType
+		this.device.queue.writeBuffer(this.sphereData, 0, new Float32Array([x, y, z, 0.0, r, g, b, a, radius, surfaceType]))
+
+		x = 0.0
+		y = -100.5
+		z = -1.0
+		r = 0.0
+		g = 1.0
+		b = 0.0
+		a = 0.0
+		radius = 100.0
+		surfaceType = 0
+		this.spheres[1] = new Sphere()
+		this.spheres[1].center = [x, y, z]
+		this.spheres[1].color = [r, g, b]
+		this.spheres[1].radius = radius
+		this.spheres[1].surfaceType = surfaceType
+		this.device.queue.writeBuffer(this.sphereData, SphereSize, new Float32Array([x, y, z, 0.0, r, g, b, a, radius, surfaceType]))
 
 		this.buildBVH()
 
@@ -489,19 +549,6 @@ class Renderer {
 
 		this.canvas = canvas
 
-		const sphereCountElement = document.getElementById("sphereCount")
-		if (!sphereCountElement) throw new Error("No sphereCount element")
-
-		this.sphereCountElement = sphereCountElement
-
-		this.sphereCountElement.textContent = this.sphereCount.toString()
-
-		const renderTimeElement = document.getElementById("renderTime")
-
-		if (!renderTimeElement) throw new Error("No renderTime element")
-
-		this.renderTimeElement = renderTimeElement
-
 		// 初始化WebGPU
 		const { context, format } = await this.initWebGPU()
 
@@ -579,7 +626,9 @@ class Renderer {
 		this.device.queue.onSubmittedWorkDone().then(
 			() => {
 				let end = performance.now()
-				this.renderTimeElement.textContent = (end - start).toFixed(2)
+				if (renderTimeElement) {
+					renderTimeElement.textContent = (end - start).toFixed(2)
+				}
 			}
 		)
 
@@ -589,5 +638,33 @@ class Renderer {
 	}
 }
 
+function initalizeUI() {
+	sphereCountElement = document.getElementById("sphereCount")
+	if (!sphereCountElement) throw new Error("No sphereCount element")
+
+	renderTimeElement = document.getElementById("renderTime")
+
+	if (!renderTimeElement) throw new Error("No renderTime element")
+
+	inputSphereCountElement = document.getElementById("inputSphereCount") as HTMLInputElement
+
+	if (!inputSphereCountElement) throw new Error("No inputSphereCount element")
+
+	sphereCountElement.textContent = renderer.sphereCount.toString()
+
+	inputSphereCountElement.addEventListener("input", function () {
+		if (inputSphereCountElement) {
+			var value = inputSphereCountElement.value
+			renderer.sphereCount = parseInt(value)
+			window.location.reload()
+			console.log(value)
+		}
+		// 在这里可以执行其他操作，如更新页面内容或触发其他事件等
+	});
+}
+
 var renderer = new Renderer()
+initalizeUI()
 renderer.run()
+
+console.log('%c 记得设置合理的work group size', 'color:#f00;')
