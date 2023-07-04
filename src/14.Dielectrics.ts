@@ -1,5 +1,6 @@
 import screenShader from "./shaders/computeShader.wgsl?raw"
-import rayTracerKernel from "./shaders/LambertDiffuse.wgsl?raw"
+import common from "./shaders/Common.wgsl?raw"
+import rayTracerKernel from "./shaders/Dielectrics.wgsl?raw"
 import { BVHNode } from "./BVHNode"
 import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
@@ -46,9 +47,8 @@ class Renderer {
 	cameraRight = new Float32Array([1.0, 0.0, 0.0])
 	cameraUp = new Float32Array([0.0, 1.0, 0.0])
 	sphereCount = 4
-	maxBounces = 50
-
-	deviceRelativeSize = {}
+	maxBounces = 5
+	samplePerPixels = 100
 
 	constructor() {
 	}
@@ -61,7 +61,8 @@ class Renderer {
 																sphere.material.color[1], 
 																sphere.material.color[2]]))
 		this.device.queue.writeBuffer(sphereData, offset + 28, new Int32Array([sphere.material.surfaceType]))
-		this.device.queue.writeBuffer(sphereData, offset + 32, new Float32Array([sphere.material.fuzz]))
+		this.device.queue.writeBuffer(sphereData, offset + 32, new Float32Array([sphere.material.fuzz, 
+																				 sphere.material.indexOfRefraction]))
 	}
 
 	async createAssets() {
@@ -93,33 +94,12 @@ class Renderer {
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
 
-		// this.device.queue.writeBuffer(this.sceneData, 0, 
-		// 	new Float32Array([
-		// 	this.cameraPosition[0],
-		// 	this.cameraPosition[1],
-		// 	this.cameraPosition[2],
-		// 	0.0,
-		// 	this.cameraForward[0],
-		// 	this.cameraForward[1],
-		// 	this.cameraForward[2],
-		// 	0.0,
-		// 	this.cameraRight[0],
-		// 	this.cameraRight[1],
-		// 	this.cameraRight[2],
-		// 	0.0,
-		// 	this.cameraUp[0],
-		// 	this.cameraUp[1],
-		// 	this.cameraUp[2],
-		// 	0.0,
-		// 	this.sphereCount,
-		// 	1.0
-		// ]), 0, 18)
-
 		this.device.queue.writeBuffer(this.sceneData, 0, this.cameraPosition)
 		this.device.queue.writeBuffer(this.sceneData, 16, this.cameraForward)
 		this.device.queue.writeBuffer(this.sceneData, 32, this.cameraRight)
 		this.device.queue.writeBuffer(this.sceneData, 48, this.cameraUp)
-		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, this.maxBounces]))
+		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, 
+																		  this.maxBounces, this.samplePerPixels]))
 
 		this.sphereData = this.device.createBuffer({
 			size: SphereSize * this.sphereCount,
@@ -162,10 +142,10 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 0.0))
-		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 0.0, 0.0))
-		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 0.0, 0.0))
-		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0))
+		this.spheres[0] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 2, 0.0, 1.5))			// Left
+		this.spheres[1] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0, 1.0, 1.0))			// Middle
+		this.spheres[2] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1, 0.0, 1.0))			// Right
+		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0], 0.0, 0.0, 1.0))		// FLoor
 
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
@@ -307,6 +287,7 @@ class Renderer {
 	async initWebGPU() {
 		// 判断当前设备是否支持WebGPU
 		if (!navigator.gpu) throw new Error("Not Support WebGPU")
+
 		// 请求Adapter对象，GPU在浏览器中的抽象代理
 		const adapter = await navigator.gpu.requestAdapter({
 			/* 电源偏好
@@ -315,21 +296,26 @@ class Renderer {
 			*/
 			powerPreference: "high-performance",
 		})
+
 		if (!adapter) throw new Error("No Adapter Found")
+
 		//请求GPU设备
 		this.device = await adapter.requestDevice()
 		const device = this.device
+
 		//获取WebGPU上下文对象
 		const context = this.canvas.getContext("webgpu") as GPUCanvasContext
+
 		//获取浏览器默认的颜色格式
 		const format = navigator.gpu.getPreferredCanvasFormat()
+
 		//设备分辨率
 		const devicePixelRatio = window.devicePixelRatio || 1
-		
+
 		//canvas尺寸
 		this.canvas.width = this.imageWidth / devicePixelRatio
 		this.canvas.height = this.imageHeight / devicePixelRatio
-		
+
 		//配置WebGPU
 		context.configure({
 			device,
@@ -444,7 +430,7 @@ class Renderer {
 			compute: {
 				module: this.device.createShaderModule(
 					{
-						code: rayTracerKernel
+						code: common + rayTracerKernel
 					}
 				),
 				entryPoint: "main"
@@ -595,8 +581,6 @@ class Renderer {
 		}
 		// 建立渲染通道，类似图层
 		const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor)
-		
-		passEncoder.setViewport(0, 0, this.canvas.width, this.canvas.height, 0.0, 1.0);
 		
 		// 传入渲染管线
 		passEncoder.setPipeline(pipeline)

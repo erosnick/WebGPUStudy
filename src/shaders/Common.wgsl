@@ -2,10 +2,15 @@ const Infinity = 100000.0;
 const Epsilon = 0.00001;
 const Pi = 3.14159265359;
 
+// surfaceType
+// 0 Lambert Diffuse
+// 1 Metal
+// 2 Dielectrics
 struct SurfaceMaterial {
     color: vec3f,
     surfaceType: u32,
-    fuzz: f32
+    fuzz: f32,
+    indexOfRefraction: f32
 }
 
 struct Sphere {
@@ -27,7 +32,8 @@ struct SceneData {
     cameraUp: vec4f,
     sphereCount: u32,
     useBVH: u32,
-    maxBounces: u32
+    maxBounces: u32,
+    samplePerPixels: u32
 }
 
 struct SphereData {
