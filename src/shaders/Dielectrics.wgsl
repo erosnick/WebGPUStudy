@@ -299,6 +299,13 @@ fn metal(ray: Ray, hitResult: HitResult) -> ScatterData {
     return data;
 }
 
+// Use Schlick's approximation for reflectance
+fn reflectance(cosine: f32, refractionIndex: f32) -> f32 {
+    var r0 = (1.0 - refractionIndex) / (1.0 + refractionIndex);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow((1.0 - cosine), 5.0);
+}
+
 fn dielectrics(ray: Ray, hitResult: HitResult) -> ScatterData {
     var data : ScatterData;
     data.albedo = vec3f(1.0, 1.0, 1.0);
@@ -318,7 +325,7 @@ fn dielectrics(ray: Ray, hitResult: HitResult) -> ScatterData {
 
     var direction: vec3f;
 
-    if (cannotRefract) {
+    if (cannotRefract || reflectance(cosTheta, refractionRatio) > random()) {
         direction = reflect(unitDirection, hitResult.normal);
     }
     else {
