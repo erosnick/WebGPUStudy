@@ -143,7 +143,7 @@ class Renderer {
 		// }
 
 		this.spheres[0] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 2, 0.0, 1.5))			// Left
-		this.spheres[1] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0, 1.0, 1.0))			// Middle
+		this.spheres[1] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.1, 0.2, 0.5], 0, 1.0, 1.0))			// Center
 		this.spheres[2] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1, 0.0, 1.0))			// Right
 		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0], 0.0, 0.0, 1.0))		// FLoor
 
