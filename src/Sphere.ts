@@ -1,19 +1,16 @@
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
+import { SurfaceMaterial } from "./SurfaceMaterial"
 
 export const SphereSize = 48
 
 export class Sphere {
     center!: Vec3
-    color!: Vec3
     radius!: number
-    fuzz!: number
-    surfaceType!: number
+    material!: SurfaceMaterial
 
-    constructor(center: Vec3 = [], color: Vec3 = [], radius: number = 0.0, fuzz: number = 0.0, surfaceType: number = 0) {
+    constructor(center: Vec3 = [], radius: number = 0.0, material: SurfaceMaterial) {
         this.center = center
-        this.color = color
         this.radius = radius
-        this.fuzz = fuzz
-        this.surfaceType = surfaceType
+        this.material = material
     }
 }

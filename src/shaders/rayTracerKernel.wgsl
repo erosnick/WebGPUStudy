@@ -2,12 +2,16 @@ const Infinity = 100000.0;
 const Epsilon = 0.00001;
 const Pi = 3.14159265359;
 
+struct SurfaceMaterial {
+    color: vec3f,
+    surfaceType: u32,
+    fuzz: f32
+}
+
 struct Sphere {
-    center: vec4f,
-    color: vec4f,
+    center: vec3f,
     radius: f32,
-    fuzz: f32,
-    surfaceType: u32
+    material: SurfaceMaterial
 }
 
 struct Ray {
@@ -231,7 +235,7 @@ fn  nearZero(vector: vec3f) -> bool {
 }
 
 fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldHitResult: HitResult) -> HitResult {
-    var center = sphere.center.xyz;
+    var center = sphere.center;
     let oc = ray.origin - center;
     let a: f32 = dot(ray.direction, ray.direction);
     let halfB: f32 = dot(ray.direction, oc);
@@ -263,12 +267,12 @@ fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldHitResult: HitRe
 
     hitResult.t = root;
     hitResult.hit = true;
-    hitResult.color = sphere.color.xyz;
+    hitResult.color = sphere.material.color;
     hitResult.position = pointAt(ray, hitResult.t);
     var outwardNormal = (hitResult.position - sphere.center.xyz) / sphere.radius;
     hitResult = setFaceNormal(ray, outwardNormal, hitResult);
-    hitResult.surfaceType = sphere.surfaceType;
-    hitResult.fuzz = sphere.fuzz;
+    hitResult.surfaceType = sphere.material.surfaceType;
+    hitResult.fuzz = sphere.material.fuzz;
     return hitResult;
 }
 

@@ -1,7 +1,7 @@
 export class Material {
-    texture: GPUTexture
-    view: GPUTextureView
-    sampler: GPUSampler
+    texture!: GPUTexture
+    view!: GPUTextureView
+    sampler!: GPUSampler
 
     async initialize(device: GPUDevice, url: string) {
         const response: Response = await fetch(url)

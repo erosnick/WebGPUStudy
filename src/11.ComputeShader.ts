@@ -4,6 +4,7 @@ import { BVHNode } from "./BVHNode"
 import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
+import { SurfaceMaterial } from "./SurfaceMaterial"
 
 const Infinity = 10000.0
 
@@ -52,10 +53,13 @@ class Renderer {
 
 	async writeSphereData(sphere: Sphere, sphereData: GPUBuffer, offset: number) {
 		this.device.queue.writeBuffer(sphereData, offset, new Float32Array([
-			sphere.center[0], sphere.center[1], sphere.center[2], 0.0, 
-			sphere.color[0], sphere.color[1], sphere.color[2], 0.0, 
-			sphere.radius, sphere.fuzz]))
-		this.device.queue.writeBuffer(sphereData, offset + 40, new Int32Array([sphere.surfaceType, sphere.surfaceType]))
+		sphere.center[0], sphere.center[1], sphere.center[2], sphere.radius]))
+		this.device.queue.writeBuffer(sphereData, offset + 16, new Float32Array([
+																sphere.material.color[0], 
+																sphere.material.color[1], 
+																sphere.material.color[2]]))
+		this.device.queue.writeBuffer(sphereData, offset + 28, new Int32Array([sphere.material.surfaceType]))
+		this.device.queue.writeBuffer(sphereData, offset + 32, new Float32Array([sphere.material.fuzz]))
 	}
 
 	async createAssets() {
@@ -156,10 +160,10 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], [0.8, 0.3, 0.3], 0.5, 1.0, 0.0)
-		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], [0.8, 0.6, 0.2], 0.5, 1.0, 1.0)
-		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], [0.8, 0.8, 0.8], 0.5, 0.3, 1.0)
-		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], [0.8, 0.8, 0.0], 100.0, 0.0, 0.0)
+		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 1.0))
+		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1.0, 1.0))
+		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 1.0, 0.3))
+		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0))
 
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
