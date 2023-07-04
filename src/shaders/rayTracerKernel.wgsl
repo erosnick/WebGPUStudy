@@ -1,10 +1,12 @@
 const Infinity = 100000.0;
-const Epsilon = 0.000001;
+const Epsilon = 0.00001;
+const Pi = 3.14159265359;
 
 struct Sphere {
     center: vec4f,
     color: vec4f,
     radius: f32,
+    fuzz: f32,
     surfaceType: u32
 }
 
@@ -35,7 +37,8 @@ struct HitResult {
     position: vec3f,
     normal: vec3f,
     frontFace: bool,
-    surfaceType: u32
+    surfaceType: u32,
+    fuzz: f32
 }
 
 struct GlobalData {
@@ -56,12 +59,6 @@ struct BVH {
 
 struct ObjectIndices {
     sphereIndices: array<f32>
-}
-
-struct Seed {
-    seed1: u32,
-    seed2: u32,
-    seed3: u32
 }
 
 @group(0) @binding(0) var colorBuffer: texture_storage_2d<rgba8unorm, write>;
@@ -89,6 +86,70 @@ fn setFaceNormal(ray: Ray, outwardNormal: vec3f, hitResult: HitResult) -> HitRes
     return tempHitResult;
 }
 
+// A psuedo random number. Initialized with init_rand(), updated with rand().
+var<private> rnd : vec3u;
+
+// Initializes the random number generator.
+fn init_rand(invocation_id : vec3u, seed: vec3u) {
+  const A = vec3(1741651 * 1009,
+                 140893  * 1609 * 13,
+                 6521    * 983  * 7 * 2);
+  rnd = (invocation_id * A) ^ seed;
+}
+
+// Returns a random number between 0 and 1.
+fn rand() -> f32 {
+  const C = vec3(60493  * 9377,
+                 11279  * 2539 * 23,
+                 7919   * 631  * 5 * 3);
+
+  rnd = (rnd * C) ^ (rnd.yzx >> vec3(4u));
+  return f32(rnd.x ^ rnd.y) / f32(0xffffffff);
+}
+
+// Returns a random point within a unit sphere centered at (0,0,0).
+fn rand_unit_sphere() -> vec3f {
+    var u = rand();
+    var v = rand();
+    var theta = u * 2.0 * Pi;
+    var phi = acos(2.0 * v - 1.0);
+    var r = pow(rand(), 1.0/3.0);
+    var sin_theta = sin(theta);
+    var cos_theta = cos(theta);
+    var sin_phi = sin(phi);
+    var cos_phi = cos(phi);
+    var x = r * sin_phi * sin_theta;
+    var y = r * sin_phi * cos_theta;
+    var z = r * cos_phi;
+    return vec3f(x, y, z);
+}
+
+fn rand_concentric_disk() -> vec2f {
+    let u = vec2f(rand(), rand());
+    let uOffset = 2.f * u - vec2f(1, 1);
+
+    if (uOffset.x == 0 && uOffset.y == 0){
+        return vec2f(0, 0);
+    }
+
+    var theta = 0.0;
+    var r = 0.0;
+    if (abs(uOffset.x) > abs(uOffset.y)) {
+        r = uOffset.x;
+        theta = (Pi / 4) * (uOffset.y / uOffset.x);
+    } else {
+        r = uOffset.y;
+        theta = (Pi / 2) - (Pi / 4) * (uOffset.x / uOffset.y);
+    }
+    return r * vec2f(cos(theta), sin(theta));
+}
+
+fn rand_cosine_weighted_hemisphere() -> vec3f {
+    let d = rand_concentric_disk();
+    let z = sqrt(max(0.0, 1.0 - d.x * d.x - d.y * d.y));
+    return vec3f(d.x, d.y, z);
+}
+
 // 随机种子生成器
 fn hash(seed: u32) ->u32 {
     var realSeed = seed;
@@ -98,6 +159,18 @@ fn hash(seed: u32) ->u32 {
     realSeed *= 0x27d4eb2du;
     realSeed = realSeed ^ (realSeed >> 15u);
     return realSeed;
+}
+
+var<private> wseed: u32;
+
+fn randomCore(seed: u32) -> f32 {
+    var realSeed = seed;
+    realSeed = (realSeed ^ 61) ^ (realSeed >> 16);
+    realSeed *= 9;
+    realSeed = realSeed ^ (realSeed >> 4);
+    realSeed *= 0x27d4eb2d;
+    wseed = realSeed ^ (realSeed >> 15);
+    return f32(wseed) * (1.0 / 4294967296.0);
 }
 
 fn hash3(seed: u32) -> vec3f {
@@ -110,26 +183,26 @@ fn hash3(seed: u32) -> vec3f {
 }
 
 // 根据种子生成0-1之间的随机数
-fn random(seed: u32) -> f32 {
-    return f32(hash(seed)) / 4294967296.0; // 2^32
+fn random() -> f32 {
+    return randomCore(wseed);
 }
 
-fn randomInRange(seed: u32, min: f32, max: f32) -> f32 {
-    return random(seed) * (max - min) + min;
+fn randomInRange(min: f32, max: f32) -> f32 {
+    return random() * (max - min) + min;
 }
 
-fn randomVector(seed: Seed) -> vec3f {
-    return vec3f(random(seed.seed1), random(seed.seed2), random(seed.seed3));
+fn randomVector() -> vec3f {
+    return vec3f(random(), random(), random());
 }
 
-fn randomVectorInRange(seed: Seed, min: f32, max: f32) -> vec3f {
-    return vec3f(randomInRange(seed.seed1, min, max), randomInRange(seed.seed2, min, max), randomInRange(seed.seed3, min, max));
+fn randomVectorInRange(min: f32, max: f32) -> vec3f {
+    return vec3f(randomInRange(min, max), randomInRange(min, max), randomInRange(min, max));
 }
 
-fn randomInUnitSphere(seed: Seed) -> vec3f {
+fn randomInUnitSphere() -> vec3f {
     var p: vec3f;
     while (true) {
-        p = randomVectorInRange(seed, -1.0, 1.0);
+        p = randomVectorInRange(-1.0, 1.0);
         if (dot(p, p) >= 1.0) {
             continue;
         }
@@ -138,12 +211,12 @@ fn randomInUnitSphere(seed: Seed) -> vec3f {
     return p;
 }
 
-fn randomUnitVector(seed: Seed) -> vec3f {
-    return normalize(randomInUnitSphere(seed));
+fn randomUnitVector() -> vec3f {
+    return normalize(randomInUnitSphere());
 }
 
-fn randomInHemisphere(seed: Seed, normal: vec3f) -> vec3f {
-    var inUnitSphere = randomInUnitSphere(seed);
+fn randomInHemisphere(normal: vec3f) -> vec3f {
+    var inUnitSphere = randomInUnitSphere();
     // In the same hemisphere as the normal
     if (dot(inUnitSphere, normal) > 0.0) {
         return inUnitSphere;
@@ -151,6 +224,10 @@ fn randomInHemisphere(seed: Seed, normal: vec3f) -> vec3f {
     else {
         return -inUnitSphere;
     }
+}
+
+fn  nearZero(vector: vec3f) -> bool {
+    return (abs(vector.x) < Epsilon) && (abs(vector.y) < Epsilon) && (abs(vector.z) < Epsilon);
 }
 
 fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldHitResult: HitResult) -> HitResult {
@@ -191,6 +268,7 @@ fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldHitResult: HitRe
     var outwardNormal = (hitResult.position - sphere.center.xyz) / sphere.radius;
     hitResult = setFaceNormal(ray, outwardNormal, hitResult);
     hitResult.surfaceType = sphere.surfaceType;
+    hitResult.fuzz = sphere.fuzz;
     return hitResult;
 }
 
@@ -270,8 +348,8 @@ fn hitWorld(ray: Ray, sphereCount: u32, hitData: GlobalData, contents: u32, useB
     return tempHitData;
 }
 
-fn rayColor(ray: Ray, seed: Seed) -> vec3f {
-    var attenuation = 1.0;
+fn rayColor(ray: Ray) -> vec3f {
+    var attenuation = vec3f(1.0, 1.0, 1.0);
     var newRay: Ray = ray;
 
     for (var i: u32 = 0; i < sceneData.maxBounces; i++) {
@@ -280,28 +358,39 @@ fn rayColor(ray: Ray, seed: Seed) -> vec3f {
         if (hitResult.hit) {
             // newRay.direction = normalize(reflect(newRay.direction, hitResult.normal));
 
-            // Remove shadow acne
-            newRay.origin = hitResult.position + hitResult.normal * Epsilon;
-
             if (hitResult.surfaceType == 0) {
                 // A Simple Diffuse Material
                 // var targetPosition = hitResult.position + hitResult.normal + randomInUnitSphere(seed);
 
                 // True Lambertian Reflection
-                var targetPosition = hitResult.position + hitResult.normal + randomUnitVector(seed);
+                // var targetPosition = hitResult.position + hitResult.normal + randomUnitVector(seed);
 
                 // An Alternative Diffuse Formulation
                 // var targetPosition = hitResult.position + randomInHemisphere(seed, hitResult.normal);
 
-                newRay.direction = targetPosition - hitResult.position;
+                var direction = hitResult.normal + randomUnitVector();
 
-                attenuation *= 0.5;
+                if (nearZero(direction)) {
+                    direction = hitResult.normal;
+                }
 
+                newRay.origin = hitResult.position;
+                newRay.direction = direction;
+
+                attenuation *= hitResult.color;
             }
             else if (hitResult.surfaceType == 1) {
                 var reflected = reflect(normalize(newRay.direction), hitResult.normal);
 
-                newRay.direction = reflected;
+                if (dot(reflected, hitResult.normal) > 0.0) {
+                    newRay.origin = hitResult.position;
+                    newRay.direction = reflected + hitResult.fuzz * randomInUnitSphere();
+
+                    attenuation *= hitResult.color;
+                }
+                else {
+                    return vec3f(0.0, 0.0, 0.0);
+                }
             }
 
             // Visualize normal
@@ -314,6 +403,7 @@ fn rayColor(ray: Ray, seed: Seed) -> vec3f {
             return attenuation * c;
         }
     }
+    // If we've exceeded the ray bounce limit, no more light is gathered.
     return vec3f(0.0, 0.0, 0.0);
 }
 
@@ -438,49 +528,36 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3u) {
 
     const samplePerPixels = 100;
 
-    var seed1 = u32(screenPosition.x + screenPosition.y * 1000);
-    var seed2 = hash(seed1);
-    var seed3 = hash(seed2);
+    // var seed1 = u32(screenPosition.x + screenPosition.y * 1000);
+    // var seed2 = hash(seed1);
+    // var seed3 = hash(seed2);
 
-    var seed: Seed;
-    seed.seed1 = seed1;
-    seed.seed2 = seed2;
-    seed.seed3 = seed3;
+    var hashSeed = hash3(screenPosition.x + screenSize.x * screenPosition.y + (screenSize.x * screenSize.y ) * 1000);
+
+    init_rand(globalInvocationID, vec3u(hashSeed));
+
+    wseed = u32((f32(screenPosition.x) / f32(screenSize.x)) * (f32(screenPosition.y) / f32(screenSize.y)) * 69557857);
+    // wseed = u32(screenPosition.x + screenPosition.y * 1000);
 
     var pixelColor = vec3f(0.0, 0.0, 0.0);
 
     for (var s = 0; s < samplePerPixels; s++) {
         var ray: Ray;
-
-        seed1 = hash(seed1);
-        seed2 = hash(seed2);
-        seed3 = hash(seed3);
-
-        let u = (f32(screenPosition.x) + random(seed1)) / f32(screenSize.x - 1);
-        let v = (f32(screenSize.y - screenPosition.y) + random(seed2)) / f32(screenSize.y - 1);
+        
+        let u = (f32(screenPosition.x) + rand()) / f32(screenSize.x - 1);
+        let v = (f32(screenSize.y - screenPosition.y) + rand()) / f32(screenSize.y - 1);
 
         ray.origin = origin;
         ray.direction = lowerLeftCorner + u * horizontal + v * vertical - origin;
 
-        var seed: Seed;
-        seed.seed1 = seed1;
-        seed.seed2 = seed2;
-        seed.seed3 = seed3;
-
-        pixelColor += rayColor(ray, seed);
+        pixelColor += rayColor(ray);
     }
 
     pixelColor /= f32(samplePerPixels);
 
     pixelColor = sqrt(pixelColor);
 
-    var hashSeed = hash3(screenPosition.x + screenSize.x * screenPosition.y + (screenSize.x * screenSize.y ) * 1000);
-
-    seed.seed1 = u32(hashSeed.x);
-    seed.seed2 = u32(hashSeed.y);
-    seed.seed3 = u32(hashSeed.z);
-
-    // pixelColor = vec3f(random(seed1), random(seed2), random(seed3));
+    // pixelColor = vec3f(random(), random(), random());
 
     // pixelColor = vec3f(f32(screenPosition.x) / f32(screenSize.x), f32(screenPosition.y) / f32(screenSize.y), 0.0);
 

@@ -1,7 +1,7 @@
 import screenShader from "./shaders/computeShader.wgsl?raw"
 import rayTracerKernel from "./shaders/rayTracerKernel.wgsl?raw"
 import { BVHNode } from "./BVHNode"
-import { Sphere } from "./Sphere"
+import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
 
@@ -44,10 +44,18 @@ class Renderer {
 	cameraForward = new Float32Array([0.0, 0.0, -1.0])
 	cameraRight = new Float32Array([1.0, 0.0, 0.0])
 	cameraUp = new Float32Array([0.0, 1.0, 0.0])
-	sphereCount = 2
+	sphereCount = 4
 	maxBounces = 50
 
 	constructor() {
+	}
+
+	async writeSphereData(sphere: Sphere, sphereData: GPUBuffer, offset: number) {
+		this.device.queue.writeBuffer(sphereData, offset, new Float32Array([
+			sphere.center[0], sphere.center[1], sphere.center[2], 0.0, 
+			sphere.color[0], sphere.color[1], sphere.color[2], 0.0, 
+			sphere.radius, sphere.fuzz]))
+		this.device.queue.writeBuffer(sphereData, offset + 40, new Int32Array([sphere.surfaceType, sphere.surfaceType]))
 	}
 
 	async createAssets() {
@@ -107,8 +115,6 @@ class Renderer {
 		this.device.queue.writeBuffer(this.sceneData, 48, this.cameraUp)
 		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, this.maxBounces]))
 
-		const SphereSize = 48
-
 		this.sphereData = this.device.createBuffer({
 			size: SphereSize * this.sphereCount,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
@@ -150,37 +156,14 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		let x = 0.0
-		let y = 0.0
-		let z = -1.0
-		let r = 1.0
-		let g = 0.0
-		let b = 0.0
-		let a = 0.0
-		let radius = 0.5
-		let surfaceType = 0
-		this.spheres[0] = new Sphere()
-		this.spheres[0].center = [x, y, z]
-		this.spheres[0].color = [r, g, b]
-		this.spheres[0].radius = radius
-		this.spheres[0].surfaceType = surfaceType
-		this.device.queue.writeBuffer(this.sphereData, 0, new Float32Array([x, y, z, 0.0, r, g, b, a, radius, surfaceType]))
+		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], [0.8, 0.3, 0.3], 0.5, 1.0, 0.0)
+		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], [0.8, 0.6, 0.2], 0.5, 1.0, 1.0)
+		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], [0.8, 0.8, 0.8], 0.5, 0.3, 1.0)
+		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], [0.8, 0.8, 0.0], 100.0, 0.0, 0.0)
 
-		x = 0.0
-		y = -100.5
-		z = -1.0
-		r = 0.0
-		g = 1.0
-		b = 0.0
-		a = 0.0
-		radius = 100.0
-		surfaceType = 0
-		this.spheres[1] = new Sphere()
-		this.spheres[1].center = [x, y, z]
-		this.spheres[1].color = [r, g, b]
-		this.spheres[1].radius = radius
-		this.spheres[1].surfaceType = surfaceType
-		this.device.queue.writeBuffer(this.sphereData, SphereSize, new Float32Array([x, y, z, 0.0, r, g, b, a, radius, surfaceType]))
+		for (let i = 0; i < this.spheres.length; i++) {
+			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
+		}
 
 		this.buildBVH()
 
