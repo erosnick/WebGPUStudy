@@ -1,6 +1,6 @@
 import screenShader from "./shaders/computeShader.wgsl?raw"
 import common from "./shaders/Common.wgsl?raw"
-import rayTracerKernel from "./shaders/Dielectrics.wgsl?raw"
+import rayTracerKernel from "./shaders/PositionableCamera.wgsl?raw"
 import { BVHNode } from "./BVHNode"
 import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
@@ -12,7 +12,7 @@ const Infinity = 10000.0
 var sphereCountElement: HTMLElement | null
 var renderTimeElement: HTMLElement | null
 var inputSphereCountElement: HTMLInputElement | null
-var useBVHElement : HTMLElement | null
+var useBVHElement: HTMLElement | null
 
 class Renderer {
 
@@ -110,20 +110,17 @@ class Renderer {
 		this.spheres = new Array(this.sphereCount)
 
 		// for (let i = 0; i < this.sphereCount; i++) {
-		// 	let x = ((Math.random() * 2.0) - 1.0) * 3.0
-		// 	let y = ((Math.random() * 2.0) - 1.0) * 3.0
+		// 	let x = ((Math.random() * 2.0) - 1.0) * 20.0
+		// 	let y = ((Math.random() * 2.0) - 1.0) * 20.0
 		// 	let z = Math.random() * -5.0 - 5.0
 		// 	let r = Math.random()
 		// 	let g = Math.random()
 		// 	let b = Math.random()
 		// 	let radius = Math.random() * 0.5 + 0.5
 
-		// 	this.spheres[i] = new Sphere()
-		// 	this.spheres[i].center = [x, y, z]
-		// 	this.spheres[i].color = [r, g, b]
-		// 	this.spheres[i].radius = radius
+		// 	this.spheres[i] = new Sphere([x, y, z], radius, new SurfaceMaterial([r, b, g], 0, 0.0, 1.0))
 
-		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
+		// 	this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
 		// }
 
 		// for (let i = 0; i < this.sphereCount; i++) {
@@ -135,18 +132,24 @@ class Renderer {
 		// 	let b = Math.random()
 		// 	let radius = 0.1 + 1.9 * Math.random();
 
-		// 	this.spheres[i] = new Sphere()
-		// 	this.spheres[i].center = [x, y, z]
-		// 	this.spheres[i].color = [r, g, b]
-		// 	this.spheres[i].radius = radius
+		// 	this.spheres[i] = new Sphere([x, y, z], radius, new SurfaceMaterial([r, b, g], 1, 0.0, 1.0))
 
-		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
+		// 	this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
+		// }
+
+		// this.spheres[0] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 2, 0.0, 1.5))			// Left
+		// this.spheres[1] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.1, 0.2, 0.5], 0, 1.0, 1.0))			// Center
+		// this.spheres[2] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1, 0.0, 1.0))			// Right
+		// this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0], 0.0, 0.0, 1.0))		// FLoor
+
+		// for (let i = 0; i < this.spheres.length; i++) {
+		// 	this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
 		// }
 
 		this.spheres[0] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([1.0, 1.0, 1.0], 2, 0.0, 1.5))			// Left
-		this.spheres[1] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.1, 0.2, 0.5], 0, 1.0, 1.0))			// Center
-		this.spheres[2] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1, 0.0, 1.0))			// Right
-		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0], 0.0, 0.0, 1.0))		// Ground
+		this.spheres[1] = new Sphere([ 0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.1, 0.2, 0.5], 0, 0.0, 1.0))			// Center
+		this.spheres[2] = new Sphere([ 1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1, 0.0, 1.0))			// Right
+		this.spheres[3] = new Sphere([0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0, 0.0, 1.0))		// Ground
 
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
@@ -623,7 +626,7 @@ function initalizeUI() {
 	if (!inputSphereCountElement) throw new Error("No inputSphereCount element")
 
 	sphereCountElement.textContent = renderer.sphereCount.toString()
-	
+
 	useBVHElement = document.getElementById("useBVH");
 
 	if (!useBVHElement) throw new Error("No useBVH element")

@@ -74,3 +74,7 @@ struct ScatterData {
     albedo: vec3f,
     scatter: bool
 }
+
+fn radians(angle: f32) ->f32 {
+    return (Pi / 180.0) * angle;
+}

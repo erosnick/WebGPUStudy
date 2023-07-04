@@ -186,12 +186,12 @@ fn  nearZero(vector: vec3f) -> bool {
 }
 
 fn hitSphere(ray: Ray, sphere: Sphere, tMin: f32, tMax: f32, oldHitResult: HitResult) -> HitResult {
-    let oc = ray.origin - sphere.center;
-    let a = dot(ray.direction, ray.direction);
-    let halfB = dot(ray.direction, oc);
-    let c = dot(oc, oc) - sphere.radius * sphere.radius;
-    
-    let discriminant = halfB * halfB - a * c;
+    var center = sphere.center;
+    let oc = ray.origin - center;
+    let a: f32 = dot(ray.direction, ray.direction);
+    let halfB: f32 = dot(ray.direction, oc);
+    let c: f32 = dot(oc, oc) - sphere.radius * sphere.radius;
+    let discriminant : f32 = halfB * halfB - a * c;
 
     var hitResult: HitResult;
     hitResult.material = oldHitResult.material;
@@ -513,14 +513,26 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3u) {
     let screenPosition: vec2u = vec2u(u32(globalInvocationID.x), u32(globalInvocationID.y));
 
     const aspect = 16.0 / 9.0;
-    const viewportHeight = 2.0;
-    const viewportWidth = aspect * viewportHeight;
+    var lookFrom = vec3f(0.0, 0.0, 0.0);
+    var lookAt = vec3f(0.0, 0.0, -1.0);
+    var up = vec3f(0.0, 1.0, 0.0);
+    // vertical field-of-view in degrees
+    const verticalFOV = 90.0;
+    var theta = radians(verticalFOV);
+    var h = tan(theta / 2.0);
+
+    var viewportHeight = 2.0 * h;
+    var viewportWidth = aspect * viewportHeight;
     const focalLength = 1.0;
 
-    const origin = vec3f(0.0, 0.0, 0.0);
-    const horizontal = vec3f(viewportWidth, 0.0, 0.0);
-    const vertical = vec3f(0.0, viewportHeight, 0.0);
-    const lowerLeftCorner = origin - horizontal / 2.0 - vertical / 2.0 - vec3f(0.0, 0.0, focalLength);
+    var w = normalize(lookFrom - lookAt);
+    var u = normalize(cross(up, w));
+    var v = cross(w, u);
+
+    let origin = lookFrom;
+    var horizontal = viewportWidth * u;
+    var vertical = viewportHeight * v;
+    var lowerLeftCorner = origin - horizontal / 2.0 - vertical / 2.0 - w;
 
     // var seed1 = u32(screenPosition.x + screenPosition.y * 1000);
     // var seed2 = hash(seed1);
