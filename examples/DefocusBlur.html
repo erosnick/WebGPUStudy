@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Compute Shader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html,
+        /* body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #fff;
+            display: flex;
+            text-align: center;
+            flex-direction: column;
+            justify-content: center;
+        }
+        p{
+            font-size: 14px;
+            margin:0
+        }
+        canvas {
+           width: 100%;
+           height: 100%; 
+        } */
+    </style>
+</head>
+<body>
+    <canvas id="gfx-main" width="800" height = "450"></canvas>
+    <h2>Sphere Count: <span id="sphereCount">0</span></h2>
+    <input type="range" id="inputSphereCount" min="1" max="10000" step="2" value="1">
+    <h2>Render Time: <span id="renderTime"></span>0<span> ms</span></h2>
+    <h2>Use BVH: <span id="useBVH"></span></h2>
+    <script type="module" src="/src/16.DefocusBlur.ts"></script>
+</body>
+</html>
