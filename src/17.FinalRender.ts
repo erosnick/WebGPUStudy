@@ -14,15 +14,18 @@ var sphereCountElement: HTMLElement | null
 var renderTimeElement: HTMLElement | null
 var inputSphereCountElement: HTMLInputElement | null
 var useBVHElement: HTMLElement | null
+var link: HTMLAnchorElement
 
 class Renderer {
 
 	canvas!: HTMLCanvasElement
+	context!: GPUCanvasContext
 
 	colorBuffer!: GPUTexture
 	colorBufferView!: GPUTextureView
 	sampler!: GPUSampler
 	sceneData!: GPUBuffer
+	pixelBuffer!: GPUBuffer
 
 	spheres!: Sphere[]
 	nodes!: BVHNode[]
@@ -41,14 +44,17 @@ class Renderer {
 	screenPipeline!: GPURenderPipeline
 	screenBindGroup!: GPUBindGroup
 
-	aspectRatio = 16.0 / 9.0
-	imageWidth = 1200
+	// aspectRatio = 16.0 / 9.0
+	aspectRatio = 1.0
+	imageWidth = 845
 	imageHeight = this.imageWidth / this.aspectRatio
 
 	camera!: RTCamera
 
-	maxBounces = 50
+	maxBounces = 10
 	samplePerPixels = 100
+
+	backgroundColor = [1.0, 1.0, 1.0]
 
 	constructor() {
 	}
@@ -197,14 +203,14 @@ class Renderer {
 		this.createCamera([13.0, 2.0, 3.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 20.0, this.aspectRatio, 0.1, 10.0)
 	}
 
-	async testScene() {
+	async lightScene() {
 		this.spheres = new Array()
 
 		var groundSphere = new Sphere([0, -1000.0, 0.0], 1000.0, new SurfaceMaterial([0.5, 0.5, 0.5], 0, 0.0, 1.0))		// Ground
 		var sphere = new Sphere([0.0, 1.0, 0.0], 1.0, new SurfaceMaterial([0.1, 0.2, 0.5], 0, 0.0, 1.0))
-		var redLight = new Sphere([-2.0, 0.5, 2.0], 0.5, new SurfaceMaterial([1.0, 0.0, 0.0], 3, 0.0, 1.0))
-		var greenLight = new Sphere([0.0, 0.5, 5.0], 0.5, new SurfaceMaterial([0.0, 1.0, 0.0], 3, 0.0, 1.0))
-		var blueLight = new Sphere([2.0, 0.5, 2.0], 0.5, new SurfaceMaterial([0.0, 0.0, 1.0], 3, 0.0, 1.0))
+		var redLight = new Sphere([-2.0, 0.5, 2.0], 0.5, new SurfaceMaterial([1.0, 0.1, 0.1], 3, 0.0, 1.0))
+		var greenLight = new Sphere([0.0, 0.5, 5.0], 0.5, new SurfaceMaterial([0.1, 1.0, 0.1], 3, 0.0, 1.0))
+		var blueLight = new Sphere([2.0, 0.5, 2.0], 0.5, new SurfaceMaterial([0.1, 0.1, 1.0], 3, 0.0, 1.0))
 
 		this.spheres.push(groundSphere)
 		this.spheres.push(sphere)
@@ -220,21 +226,74 @@ class Renderer {
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
 		}
+
 		if (sphereCountElement) {
 			sphereCountElement.textContent = this.spheres.length.toString()
 		}
 
+		this.aspectRatio = 16.0 / 9.0
+		this.imageWidth = 1280
+		this.imageHeight = this.imageWidth / this.aspectRatio
+
+		this.backgroundColor = [0.1, 0.1, 0.1]
+
+		this.updateCanvasSize()
+
 		this.createCamera([0.0, 2.0, 13.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 20.0, this.aspectRatio, 0.0, 1.0)
 	}
 
+	async cornelBox() {
+		this.spheres = new Array()
+
+		var floor = new Sphere([0, -102.0, 0.0], 100.0, new SurfaceMaterial([1.0, 1.0, 1.0], 0, 0.0, 1.0))
+		var leftWall = new Sphere([-102.0, 0., 0.0], 100.0, new SurfaceMaterial([0.65, 0.05, 0.05], 0, 0.0, 1.0))
+		var rightWall = new Sphere([102.0, 0., 0.0], 100.0, new SurfaceMaterial([0.12, 0.45, 0.15], 0, 0.0, 1.0))
+		var backWall = new Sphere([0.0, 0., -101.5], 100.0, new SurfaceMaterial([1.0, 1.0, 1.0], 0, 0.0, 1.0))
+		var ceiling = new Sphere([0.0, 102.0, 0.0], 100.0, new SurfaceMaterial([1.0, 1.0, 1.0], 0, 0.0, 1.0))
+		var light = new Sphere([0.0, 102.0, 0.0], 100.0, new SurfaceMaterial([1.0, 1.0, 1.0], 3, 0.0, 1.0))
+
+		var diffuseSphere = new Sphere([-1.1, -1.5, -0.7], 0.5, new SurfaceMaterial([1.0, 1.0, 1.0], 0, 0.0, 1.0))
+		var steelSphere = new Sphere([1.1, -1.5, -0.7], 0.5, new SurfaceMaterial([1.0, 1.0, 1.0], 1, 0.0, 1.0))
+		var glassSphere = new Sphere([0.0, 0.0, -0.5], 0.5, new SurfaceMaterial([1.0, 1.0, 1.0], 2, 0.0, 1.5))
+
+		this.spheres.push(floor)
+		this.spheres.push(leftWall)
+		this.spheres.push(rightWall)
+		this.spheres.push(backWall)
+		this.spheres.push(ceiling)
+		this.spheres.push(light)
+		this.spheres.push(diffuseSphere)
+		this.spheres.push(steelSphere)
+		this.spheres.push(glassSphere)
+		
+		this.sphereData = this.device.createBuffer({
+			size: SphereSize * this.spheres.length,
+			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+		})
+
+		for (let i = 0; i < this.spheres.length; i++) {
+			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
+		}
+
+		if (sphereCountElement) {
+			sphereCountElement.textContent = this.spheres.length.toString()
+		}
+
+		this.createCamera([0.0, 0.0, 6.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 45.0, this.aspectRatio, 0.0, 1.0)
+	}
+
 	async createAssets() {
+		// this.randomScene()
+		this.lightScene()
+		// this.cornelBox()
+
 		this.colorBuffer = this.device.createTexture({
 			size: {
 				width: this.canvas.width,
 				height: this.canvas.height
 			},
 			format: "rgba8unorm",
-			usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+			usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		})
 
 		this.colorBufferView = this.colorBuffer.createView()
@@ -251,16 +310,20 @@ class Renderer {
 
 		this.sampler = this.device.createSampler(samplerDescriptor)
 
-		this.randomScene()
-		// this.testScene()
-
 		this.sceneData = this.device.createBuffer({
-			size: 16,
+			size: 32,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
 
 		this.device.queue.writeBuffer(this.sceneData, 0, new Int32Array([this.spheres.length, this.useBVH ? 1 : 0,
 		this.maxBounces, this.samplePerPixels]))
+		this.device.queue.writeBuffer(this.sceneData, 16, new Float32Array([this.backgroundColor[0], this.backgroundColor[1], this.backgroundColor[2]]))
+
+		this.pixelBuffer = this.device.createBuffer({
+				size: this.canvas.width * this.canvas.height * 4, // 每个像素占4个字节（RGBA）
+				usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, // 用于存储复制操作的目标
+			}
+		)
 
 		this.buildBVH()
 
@@ -394,6 +457,15 @@ class Renderer {
 		this.subdivide(0)
 	}
 
+	updateCanvasSize() {
+		//设备分辨率
+		const devicePixelRatio = window.devicePixelRatio || 1
+
+		//canvas尺寸
+		this.canvas.width = this.imageWidth / devicePixelRatio
+		this.canvas.height = this.imageHeight / devicePixelRatio
+	}
+
 	// 初始化WebGPU
 	async initWebGPU() {
 		// 判断当前设备是否支持WebGPU
@@ -414,28 +486,23 @@ class Renderer {
 		this.device = await adapter.requestDevice()
 		const device = this.device
 
+		this.updateCanvasSize()
+
 		//获取WebGPU上下文对象
-		const context = this.canvas.getContext("webgpu") as GPUCanvasContext
+		this.context = this.canvas.getContext("webgpu") as GPUCanvasContext
 
 		//获取浏览器默认的颜色格式
 		const format = navigator.gpu.getPreferredCanvasFormat()
 
-		//设备分辨率
-		const devicePixelRatio = window.devicePixelRatio || 1
-
-		//canvas尺寸
-		this.canvas.width = this.imageWidth / devicePixelRatio
-		this.canvas.height = this.imageHeight / devicePixelRatio
-
 		//配置WebGPU
-		context.configure({
+		this.context.configure({
 			device,
 			format,
 			// Alpha合成模式，opaque为不透明
 			alphaMode: "opaque",
 		})
 
-		return { device, context, format }
+		return { device, format }
 	}
 
 	// 创建渲染管线
@@ -647,7 +714,7 @@ class Renderer {
 		this.canvas = canvas
 
 		// 初始化WebGPU
-		const { context, format } = await this.initWebGPU()
+		const { format } = await this.initWebGPU()
 
 		this.createAssets();
 
@@ -655,7 +722,7 @@ class Renderer {
 		const pipeline = await this.initPipeline(format)
 
 		// 绘图
-		this.draw(context, pipeline)
+		this.draw(pipeline)
 
 		const device = this.device
 
@@ -663,19 +730,17 @@ class Renderer {
 		window.addEventListener("resize", () => {
 			this.canvas.width = this.canvas.clientWidth * devicePixelRatio
 			this.canvas.height = this.canvas.clientHeight * devicePixelRatio
-			context.configure({
+			this.context.configure({
 				device,
 				format,
 				alphaMode: "opaque",
 			})
-			this.draw(context, pipeline)
+			this.draw(pipeline)
 		})
 	}
 
 	// 编写绘图指令，并传递给本地的GPU设备
-	draw(
-		context: GPUCanvasContext,
-		pipeline: GPURenderPipeline) {
+	async draw(pipeline: GPURenderPipeline) {
 
 		let start = performance.now()
 
@@ -689,7 +754,7 @@ class Renderer {
 		rayTracingPass.end()
 
 		// GPU纹理视图
-		const view = context.getCurrentTexture().createView()
+		const view = this.context.getCurrentTexture().createView()
 
 		// 渲染通道配置数据
 		const renderPassDescriptor: GPURenderPassDescriptor = {
@@ -713,19 +778,79 @@ class Renderer {
 		passEncoder.setPipeline(pipeline)
 		passEncoder.setBindGroup(0, this.screenBindGroup)
 
-		// 绘图，3 个顶点
+		// 绘图，6个顶点
 		passEncoder.draw(6)
+
 		// 结束编码
 		passEncoder.end()
+
+		// commandEncoder.copyTextureToBuffer(
+		// 	{ texture: this.colorBuffer },
+		// 	{ buffer: this.pixelBuffer, bytesPerRow: 4 * this.canvas.width, rowsPerImage: this.canvas.height },
+		// 	{ width: this.canvas.width, height: this.canvas.height, depthOrArrayLayers: 1 }
+		// );
+
 		// 结束指令编写,并返回GPU指令缓冲区
 		const gpuCommandBuffer = commandEncoder.finish()
+
 		// 向GPU提交绘图指令，所有指令将在提交后执行
 		this.device.queue.submit([gpuCommandBuffer])
+
+		// var webglImage = (function convertCanvasToImage(canvas) {
+		// 	var image = new Image();
+		// 	image.src = canvas.toDataURL('image/png')
+		// 	return image
+		// })(this.canvas)
+
+		// window.document.body.appendChild(webglImage)
+
+		var imageURL = this.canvas.toDataURL("image/png", 1)
+		link = document.createElement("a")
+		link.href = imageURL
+
+		// 到这一步后背缓冲内容就没了？因为在这个回调里保存canvas的内容只会得到一张透明图片，
+		// 放在submit之后就能成功获取图像数据
 		this.device.queue.onSubmittedWorkDone().then(
-			() => {
+			async () => {
 				let end = performance.now()
 				if (renderTimeElement) {
 					renderTimeElement.textContent = (end - start).toFixed(2)
+
+					link.download = "render_" + this.samplePerPixels + "spp_" +
+						this.canvas.width + "x" + this.canvas.height + "_"
+						+ renderTimeElement?.textContent + "ms.png" // 下载时的文件名
+
+						var saveButton = document.getElementById("save")
+						saveButton?.addEventListener("click", ()=>{
+							saveImage()
+						})
+
+					// const canvas = document.createElement('canvas');
+					// const canvasContext = canvas.getContext('2d')
+					// if (canvasContext) {
+					// 	const imageData = canvasContext.createImageData(this.canvas.width, this.canvas.height)
+
+					// 	await this.pixelBuffer.mapAsync(GPUMapMode.READ, 0, this.canvas.width * this.canvas.height * 4)
+					// 	const mappedData = this.pixelBuffer.getMappedRange()
+					// 	const uint8Array = new Uint8Array(mappedData)
+					// 	imageData.data.set(uint8Array)
+					// 	canvasContext.putImageData(imageData, 0, 0)
+
+					// 	this.pixelBuffer.unmap()
+
+					// 	// 保存画布为图像文件
+					// 	this.canvas.toBlob((blob) => {
+					// 		if (blob) {
+					// 			const link = document.createElement('a');
+					// 			link.href = URL.createObjectURL(blob);
+					// 			link.download = 'texture.png';
+					// 			link.click();
+
+					// 			// 释放资源
+					// 			URL.revokeObjectURL(link.href);
+					// 		}
+					// 	}, 'image/png');
+					// }
 				}
 			}
 		)
@@ -770,5 +895,9 @@ function initalizeUI() {
 var renderer = new Renderer()
 initalizeUI()
 renderer.run()
+
+function saveImage() {
+	link.click()
+}
 
 console.log('%c 记得设置合理的work group size', 'color:#f00;')

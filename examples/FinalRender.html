@@ -6,17 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         html,
-        /* body {
-            margin: 0;
+        body {
+            /* margin: 0;
             width: 100%;
-            height: 100%;
-            background: #000;
+            height: 100%;*/
+            background: #d8d8d8;
+            /*
             color: #fff;
             display: flex;
             text-align: center;
             flex-direction: column;
-            justify-content: center;
+            justify-content: center; */
         }
+        /*
         p{
             font-size: 14px;
             margin:0
@@ -34,5 +36,23 @@
     <h2>Render Time: <span id="renderTime"></span>0<span> ms</span></h2>
     <h2>Use BVH: <span id="useBVH"></span></h2>
     <script type="module" src="/src/17.FinalRender.ts"></script>
+    <script type="module" src="https://cdn.bootcss.com/FileSaver.js/1.3.8/FileSaver.min.js"></script>
+    <script>
+        function download(selector) {
+            // 通过 API 获取目标 canvas 元素
+            const canvas = document.querySelector(selector);
+            // 如果 toBlob 方法出现兼容性问题建议引入 https://github.com/eligrey/canvas-toBlob.js
+            canvas.toBlob(function (blob) {
+                // saveAs(blob, '文件名称')
+            });
+
+            var imageURL = canvas.toDataURL({ format: "image/png", quality: 1, width: 512, height: 512 });
+            const link = document.createElement("a");
+            link.href = imageURL;
+            link.download = "webgpu_image.png"; // 下载时的文件名
+            link.click();
+        }
+    </script>
+    <button id="save">保存</button>
 </body>
 </html>

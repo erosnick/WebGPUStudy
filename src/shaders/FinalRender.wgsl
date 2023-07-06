@@ -402,7 +402,7 @@ fn rayColor(ray: Ray) -> vec3f {
                 }
             }
             else if (hitResult.material.surfaceType == 3) {
-               return hitResult.material.color;
+               return attenuation * hitResult.material.color;
             }
 
             // Visualize normal
@@ -412,7 +412,7 @@ fn rayColor(ray: Ray) -> vec3f {
             var d = normalize(newRay.direction);
             var t = 0.5 * (d.y + 1.0);
             var c = (1.0 - t) * vec3f(1.0, 1.0, 1.0) + t * vec3f(0.5, 0.7, 1.0);
-            return attenuation * c;
+            return attenuation * c * sceneData.backgroundColor;
         }
     }
     // If we've exceeded the ray bounce limit, no more light is gathered.

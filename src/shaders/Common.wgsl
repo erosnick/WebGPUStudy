@@ -30,7 +30,8 @@ struct SceneData {
     sphereCount: u32,
     useBVH: u32,
     maxBounces: u32,
-    samplePerPixels: u32
+    samplePerPixels: u32,
+    backgroundColor: vec3f
 }
 
 struct SphereData {
