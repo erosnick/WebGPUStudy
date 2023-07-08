@@ -11,6 +11,7 @@ const Infinity = 10000.0
 var sphereCountElement: HTMLElement | null
 var renderTimeElement: HTMLElement | null
 var inputSphereCountElement: HTMLInputElement | null
+var link: HTMLAnchorElement
 
 class Renderer {
 
@@ -47,6 +48,7 @@ class Renderer {
 	cameraUp = new Float32Array([0.0, 1.0, 0.0])
 	sphereCount = 4
 	maxBounces = 50
+	samplePerPixels = 1
 
 	deviceRelativeSize = {}
 
@@ -162,10 +164,10 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 0.0))
-		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 0.0, 0.0))
-		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 0.0, 0.0))
-		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0))
+		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 0.0, 1.0))
+		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 0.0, 0.0, 1.0))
+		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 0.0, 0.0, 1.0))
+		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0, 1.0))
 
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
@@ -610,12 +612,26 @@ class Renderer {
 		const gpuCommandBuffer = commandEncoder.finish()
 		// 向GPU提交绘图指令，所有指令将在提交后执行
 		this.device.queue.submit([gpuCommandBuffer])
+
+		var imageURL = this.canvas.toDataURL("image/png", 1)
+		link = document.createElement("a")
+		link.href = imageURL
+
 		this.device.queue.onSubmittedWorkDone().then(
 			() => {
 				let end = performance.now()
 				if (renderTimeElement) {
 					renderTimeElement.textContent = (end - start).toFixed(2)
 				}
+
+				link.download = "render_" + this.samplePerPixels + "spp_" +
+					this.canvas.width + "x" + this.canvas.height + "_"
+					+ renderTimeElement?.textContent + "ms.png" // 下载时的文件名
+
+				var saveButton = document.getElementById("save")
+				saveButton?.addEventListener("click", () => {
+					saveImage()
+				})
 			}
 		)
 
@@ -653,5 +669,9 @@ function initalizeUI() {
 var renderer = new Renderer()
 initalizeUI()
 renderer.run()
+
+function saveImage() {
+	link.click()
+}
 
 console.log('%c 记得设置合理的work group size', 'color:#f00;')

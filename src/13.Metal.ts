@@ -6,12 +6,14 @@ import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
 import { Vec3 } from "wgpu-matrix/dist/1.x/vec3"
 import { SurfaceMaterial } from "./SurfaceMaterial"
+import { RTCamera } from "./RTCamera"
 
 const Infinity = 10000.0
 
 var sphereCountElement: HTMLElement | null
 var renderTimeElement: HTMLElement | null
 var inputSphereCountElement: HTMLInputElement | null
+var link: HTMLAnchorElement
 
 class Renderer {
 
@@ -29,6 +31,7 @@ class Renderer {
 	sphereData!: GPUBuffer
 	bvhBuffer!: GPUBuffer
 	sphereLookupBuffer!: GPUBuffer
+	cameraData!: GPUBuffer
 
 	useBVH = true
 
@@ -39,15 +42,16 @@ class Renderer {
 	screenPipeline!: GPURenderPipeline
 	screenBindGroup!: GPUBindGroup
 
+	aspectRatio = 16.9 / 9.0
 	imageWidth = 800
 	imageHeight = 450
 
-	cameraPosition = new Float32Array([0.0, 0.0, 0.0])
-	cameraForward = new Float32Array([0.0, 0.0, -1.0])
-	cameraRight = new Float32Array([1.0, 0.0, 0.0])
-	cameraUp = new Float32Array([0.0, 1.0, 0.0])
+	camera!: RTCamera
+
 	sphereCount = 4
 	maxBounces = 50
+	samplePerPixels = 100
+	backgroundColor = [1.0, 1.0, 1.0]
 
 	constructor() {
 	}
@@ -61,6 +65,37 @@ class Renderer {
 																sphere.material.color[2]]))
 		this.device.queue.writeBuffer(sphereData, offset + 28, new Int32Array([sphere.material.surfaceType]))
 		this.device.queue.writeBuffer(sphereData, offset + 32, new Float32Array([sphere.material.fuzz]))
+	}
+
+	async writeCameraData(camera: RTCamera) {
+		var padding = 0
+		this.device.queue.writeBuffer(this.cameraData, 0, new Float32Array([
+			camera.lookFrom[0], camera.lookFrom[1], camera.lookFrom[2], padding, // Padding
+			camera.lookAt[0], camera.lookAt[1], camera.lookAt[2], padding, // Padding
+			camera.up[0], camera.up[1], camera.up[2], padding, // Padding
+			camera.verticalFOV, camera.aspectRatio, camera.aperture,
+			camera.focusDistance, camera.viewportHeight, camera.viewportWidth,
+			padding,
+			padding,
+			camera.w[0], camera.w[1], camera.w[2],
+			padding,
+			camera.u[0], camera.u[1], camera.u[2],
+			padding,
+			camera.v[0], camera.v[1], camera.v[2],
+			padding
+		]))
+	}
+
+	async createCamera(lookFrom: Vec3, lookAt: Vec3, up: Vec3, verticalFOV: number,
+		aspectRatio: number, aperture: number = 0.0, focusDistance: number = 1.0) {
+		this.camera = new RTCamera(lookFrom, lookAt, up, verticalFOV, aspectRatio, aperture, focusDistance)
+
+		this.cameraData = this.device.createBuffer({
+			size: 128,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		})
+
+		this.writeCameraData(this.camera)
 	}
 
 	async createAssets() {
@@ -88,7 +123,7 @@ class Renderer {
 		this.sampler = this.device.createSampler(samplerDescriptor)
 
 		this.sceneData = this.device.createBuffer({
-			size: 96,
+			size: 32,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
 
@@ -113,12 +148,6 @@ class Renderer {
 		// 	this.sphereCount,
 		// 	1.0
 		// ]), 0, 18)
-
-		this.device.queue.writeBuffer(this.sceneData, 0, this.cameraPosition)
-		this.device.queue.writeBuffer(this.sceneData, 16, this.cameraForward)
-		this.device.queue.writeBuffer(this.sceneData, 32, this.cameraRight)
-		this.device.queue.writeBuffer(this.sceneData, 48, this.cameraUp)
-		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, this.maxBounces]))
 
 		this.sphereData = this.device.createBuffer({
 			size: SphereSize * this.sphereCount,
@@ -161,14 +190,20 @@ class Renderer {
 		// 	this.device.queue.writeBuffer(this.sphereData, i * 32, new Float32Array([x, y, z, 0.0, r, g, b, radius]))
 		// }
 
-		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 1.0))
-		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1.0, 1.0))
-		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 1.0, 0.3))
-		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0))
+		this.spheres[0] = new Sphere([0.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.3, 0.3], 0.0, 1.0, 1.0))
+		this.spheres[1] = new Sphere([1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.6, 0.2], 1.0, 1.0, 1.0))
+		this.spheres[2] = new Sphere([-1.0, 0.0, -1.0], 0.5, new SurfaceMaterial([0.8, 0.8, 0.8], 1.0, 0.3, 1.0))
+		this.spheres[3] = new Sphere([0.0, -100.5, -1.0], 100.0, new SurfaceMaterial([0.8, 0.8, 0.0], 0.0, 0.0, 1.0))
 
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
 		}
+
+		this.device.queue.writeBuffer(this.sceneData, 0, new Int32Array([this.spheres.length, this.useBVH ? 1 : 0,
+		this.maxBounces, this.samplePerPixels]))
+		this.device.queue.writeBuffer(this.sceneData, 16, new Float32Array([this.backgroundColor[0], this.backgroundColor[1], this.backgroundColor[2]]))
+
+		this.createCamera([13.0, 2.0, 3.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 20.0, this.aspectRatio, 0.1, 10.0)
 
 		this.buildBVH()
 
@@ -613,12 +648,26 @@ class Renderer {
 		const gpuCommandBuffer = commandEncoder.finish()
 		// 向GPU提交绘图指令，所有指令将在提交后执行
 		this.device.queue.submit([gpuCommandBuffer])
+
+		var imageURL = this.canvas.toDataURL("image/png", 1)
+		link = document.createElement("a")
+		link.href = imageURL
+
 		this.device.queue.onSubmittedWorkDone().then(
 			() => {
 				let end = performance.now()
 				if (renderTimeElement) {
 					renderTimeElement.textContent = (end - start).toFixed(2)
 				}
+
+				link.download = "render_" + this.samplePerPixels + "spp_" +
+					this.canvas.width + "x" + this.canvas.height + "_"
+					+ renderTimeElement?.textContent + "ms.png" // 下载时的文件名
+
+				var saveButton = document.getElementById("save")
+				saveButton?.addEventListener("click", () => {
+					saveImage()
+				})
 			}
 		)
 
@@ -656,5 +705,9 @@ function initalizeUI() {
 var renderer = new Renderer()
 initalizeUI()
 renderer.run()
+
+function saveImage() {
+	link.click()
+}
 
 console.log('%c 记得设置合理的work group size', 'color:#f00;')

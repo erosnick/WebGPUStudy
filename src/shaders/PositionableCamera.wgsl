@@ -513,7 +513,7 @@ fn main(@builtin(global_invocation_id) globalInvocationID: vec3u) {
     let screenPosition: vec2u = vec2u(u32(globalInvocationID.x), u32(globalInvocationID.y));
 
     const aspect = 16.0 / 9.0;
-    var lookFrom = vec3f(0.0, 0.0, 0.0);
+    var lookFrom = vec3f(-2.0, 2.0, 1.0);
     var lookAt = vec3f(0.0, 0.0, -1.0);
     var up = vec3f(0.0, 1.0, 0.0);
     // vertical field-of-view in degrees

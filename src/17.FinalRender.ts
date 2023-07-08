@@ -17,7 +17,6 @@ var useBVHElement: HTMLElement | null
 var link: HTMLAnchorElement
 
 class Renderer {
-
 	canvas!: HTMLCanvasElement
 	context!: GPUCanvasContext
 

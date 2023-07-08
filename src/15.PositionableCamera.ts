@@ -13,6 +13,7 @@ var sphereCountElement: HTMLElement | null
 var renderTimeElement: HTMLElement | null
 var inputSphereCountElement: HTMLInputElement | null
 var useBVHElement: HTMLElement | null
+var link: HTMLAnchorElement
 
 class Renderer {
 
@@ -40,16 +41,15 @@ class Renderer {
 	screenPipeline!: GPURenderPipeline
 	screenBindGroup!: GPUBindGroup
 
+	aspectRatio = 16.0 / 9.0
 	imageWidth = 800
 	imageHeight = 450
 
-	cameraPosition = new Float32Array([0.0, 0.0, 0.0])
-	cameraForward = new Float32Array([0.0, 0.0, -1.0])
-	cameraRight = new Float32Array([1.0, 0.0, 0.0])
-	cameraUp = new Float32Array([0.0, 1.0, 0.0])
 	sphereCount = 4
 	maxBounces = 5
 	samplePerPixels = 100
+
+	backgroundColor = [1.0, 1.0, 1.0]
 
 	constructor() {
 	}
@@ -95,10 +95,6 @@ class Renderer {
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
 
-		this.device.queue.writeBuffer(this.sceneData, 0, this.cameraPosition)
-		this.device.queue.writeBuffer(this.sceneData, 16, this.cameraForward)
-		this.device.queue.writeBuffer(this.sceneData, 32, this.cameraRight)
-		this.device.queue.writeBuffer(this.sceneData, 48, this.cameraUp)
 		this.device.queue.writeBuffer(this.sceneData, 64, new Int32Array([this.sphereCount, this.useBVH ? 1 : 0, 
 																		  this.maxBounces, this.samplePerPixels]))
 
@@ -154,6 +150,15 @@ class Renderer {
 		for (let i = 0; i < this.spheres.length; i++) {
 			this.writeSphereData(this.spheres[i], this.sphereData, SphereSize * i)
 		}
+
+		this.sceneData = this.device.createBuffer({
+			size: 32,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		})
+
+		this.device.queue.writeBuffer(this.sceneData, 0, new Int32Array([this.spheres.length, this.useBVH ? 1 : 0,
+		this.maxBounces, this.samplePerPixels]))
+		this.device.queue.writeBuffer(this.sceneData, 16, new Float32Array([this.backgroundColor[0], this.backgroundColor[1], this.backgroundColor[2]]))
 
 		this.buildBVH()
 
@@ -598,12 +603,26 @@ class Renderer {
 		const gpuCommandBuffer = commandEncoder.finish()
 		// 向GPU提交绘图指令，所有指令将在提交后执行
 		this.device.queue.submit([gpuCommandBuffer])
+
+		var imageURL = this.canvas.toDataURL("image/png", 1)
+		link = document.createElement("a")
+		link.href = imageURL
+
 		this.device.queue.onSubmittedWorkDone().then(
 			() => {
 				let end = performance.now()
 				if (renderTimeElement) {
 					renderTimeElement.textContent = (end - start).toFixed(2)
 				}
+
+				link.download = "render_" + this.samplePerPixels + "spp_" +
+					this.canvas.width + "x" + this.canvas.height + "_"
+					+ renderTimeElement?.textContent + "ms.png" // 下载时的文件名
+
+				var saveButton = document.getElementById("save")
+				saveButton?.addEventListener("click", () => {
+					saveImage()
+				})
 			}
 		)
 
@@ -647,5 +666,9 @@ function initalizeUI() {
 var renderer = new Renderer()
 initalizeUI()
 renderer.run()
+
+function saveImage() {
+	link.click()
+}
 
 console.log('%c 记得设置合理的work group size', 'color:#f00;')
