@@ -1,6 +1,6 @@
 import screenShader from "./shaders/computeShader.wgsl?raw"
 import common from "./shaders/Common.wgsl?raw"
-import rayTracerKernel from "./shaders/FinalRender.wgsl?raw"
+import rayTracerKernel from "./shaders/MotionBlur.wgsl?raw"
 import { BVHNode } from "./BVHNode"
 import { Sphere, SphereSize } from "./Sphere"
 import { vec3 } from "wgpu-matrix"
@@ -51,7 +51,7 @@ class Renderer {
 	camera!: RTCamera
 
 	maxBounces = 10
-	samplePerPixels = 100
+	samplePerPixels = 1
 
 	backgroundColor = [1.0, 1.0, 1.0]
 
@@ -91,10 +91,10 @@ class Renderer {
 
 	async createCamera(lookFrom: Vec3, lookAt: Vec3, up: Vec3, verticalFOV: number,
 		aspectRatio: number, aperture: number = 0.0, focusDistance: number = 1.0) {
-		this.camera = new RTCamera(lookFrom, lookAt, up, verticalFOV, aspectRatio, aperture, focusDistance)
+		this.camera = new RTCamera(lookFrom, lookAt, up, verticalFOV, aspectRatio, aperture, focusDistance, 0.0, 1.0)
 
 		this.cameraData = this.device.createBuffer({
-			size: 128,
+			size: 144,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		})
 

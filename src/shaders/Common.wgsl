@@ -20,9 +20,19 @@ struct Sphere {
     material: SurfaceMaterial
 }
 
+struct MovingSphere {
+    center0: vec3f,
+    center1: vec3f,
+    radius: f32,
+    material: SurfaceMaterial,
+    time0: f32,
+    time1: f32
+}
+
 struct Ray {
     direction: vec3f,
-    origin: vec3f
+    origin: vec3f,
+    time: f32
 }
 
 // Uniform要按16字节的倍数进行对齐
@@ -85,7 +95,9 @@ struct Camera {
     viewportWidth: f32,
     w: vec4f,
     u: vec4f,
-    v: vec4f
+    v: vec4f,
+    time0: f32,
+    time1: f32
 }
 
 fn radians(angle: f32) ->f32 {
