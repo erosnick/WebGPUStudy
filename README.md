@@ -3,6 +3,7 @@
 #### 目前完成的章节：
 
 #### 实时渲染部分：
+(参考来源[WebGPU for Beginners](https://www.youtube.com/playlist?list=PLn3eTxaOtL2Ns3wkxdyS3CiqkJuwQdZzn))
 
 - 绘制三角形
 - 向顶点着色器传递数据
@@ -17,7 +18,8 @@
 - 几何着色器
 
 #### 离线渲染部分
-(来自Ray Tracing in One Weekend)
+
+(参考来源[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html))
 - Lambert漫反射材质
 - 金属材质
 - 透明材质
