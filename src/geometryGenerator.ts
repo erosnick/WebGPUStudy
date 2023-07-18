@@ -56,7 +56,9 @@ export class GeoemtryGenerator {
 
         const indices = [0, 1, 2, 2, 3, 0]
 
-        return new TriangleMesh(this.device, vertices, indices, new Material())
+        var indicesBufferData = toUint32Array(indices)
+
+        return new TriangleMesh(this.device, vertices, indicesBufferData, new Material())
     }
 
     createBox(width: number, height: number, depth: number, numSubdivisions: number, uvScale: number) {
