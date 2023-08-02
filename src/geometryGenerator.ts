@@ -71,37 +71,37 @@ export class GeoemtryGenerator {
             new Vertex([-halfWidth, -halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0]),
             new Vertex([+halfWidth, -halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 0.0]),
             new Vertex([+halfWidth, +halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0]),
-            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0]),
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 1.0]),
 
             // 后
             new Vertex([+halfWidth, -halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.0, 0.0]),
             new Vertex([-halfWidth, -halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 0.0]),
             new Vertex([-halfWidth, +halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 1.0]),
-            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [1.0, 1.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.0, 1.0]),
 
             // 左
-            new Vertex([-halfWidth, -halfHeight, -halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0]),
-            new Vertex([-halfWidth, -halfHeight, +halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 1.0]),
-            new Vertex([-halfWidth, +halfHeight, +halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0]),
+            new Vertex([-halfWidth, -halfHeight, -halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0]),
+            new Vertex([-halfWidth, -halfHeight, +halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 1.0]),
             new Vertex([-halfWidth, +halfHeight, -halfDepth], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0]),
 
             // 右
-            new Vertex([+halfWidth, -halfHeight, +halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 0.0]),
-            new Vertex([+halfWidth, -halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 1.0]),
-            new Vertex([+halfWidth, +halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0]),
+            new Vertex([+halfWidth, -halfHeight, +halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0]),
+            new Vertex([+halfWidth, -halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 0.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 1.0]),
             new Vertex([+halfWidth, +halfHeight, +halfDepth], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0]),
 
             // 上
-            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0]),
-            new Vertex([+halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0]),
-            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0]),
-            new Vertex([-halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 0.0]),
+            new Vertex([+halfWidth, +halfHeight, +halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0]),
+            new Vertex([+halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0]),
+            new Vertex([-halfWidth, +halfHeight, -halfDepth], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [0.0, 1.0]),
 
             // 下
-            new Vertex([-halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0]),
-            new Vertex([+halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0]),
-            new Vertex([+halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0]),
-            new Vertex([-halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0]),
+            new Vertex([-halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 0.0]),
+            new Vertex([+halfWidth, -halfHeight, -halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0]),
+            new Vertex([+halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0]),
+            new Vertex([-halfWidth, -halfHeight, +halfDepth], [0.0, -1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0]),
         ]
 
         const indices = [
@@ -166,8 +166,6 @@ export class GeoemtryGenerator {
                 position[1] = radius * Math.cos(phi)
                 position[2] = radius * Math.sin(phi) * Math.sin(theta)
 
-			    // Partial derivative of P with respect to theta
-                // tangent
                 var normal = vec3.normalize(position)
 
                 var color = [1.0, 1.0, 1.0, 1.0]
